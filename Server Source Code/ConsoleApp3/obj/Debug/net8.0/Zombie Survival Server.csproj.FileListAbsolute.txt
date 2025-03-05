@@ -1,0 +1,14 @@
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Zombie Survival Server.exe
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Zombie Survival Server.deps.json
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Zombie Survival Server.runtimeconfig.json
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Zombie Survival Server.dll
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Zombie Survival Server.pdb
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Zombie Survival Server.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Zombie Survival Server.AssemblyInfoInputs.cache
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Zombie Survival Server.AssemblyInfo.cs
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Zombie Survival Server.csproj.CoreCompileInputs.cache
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Zombie Survival Server.dll
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\refint\Zombie Survival Server.dll
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Zombie Survival Server.pdb
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Zombie Survival Server.genruntimeconfig.cache
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\ref\Zombie Survival Server.dll

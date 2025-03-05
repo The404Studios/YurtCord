@@ -1,0 +1,14 @@
+C:\Users\thewi\source\repos\client\client\bin\Debug\net8.0\YurtCordClient.exe
+C:\Users\thewi\source\repos\client\client\bin\Debug\net8.0\YurtCordClient.deps.json
+C:\Users\thewi\source\repos\client\client\bin\Debug\net8.0\YurtCordClient.runtimeconfig.json
+C:\Users\thewi\source\repos\client\client\bin\Debug\net8.0\YurtCordClient.dll
+C:\Users\thewi\source\repos\client\client\bin\Debug\net8.0\YurtCordClient.pdb
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\YurtCordClient.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\YurtCordClient.AssemblyInfoInputs.cache
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\YurtCordClient.AssemblyInfo.cs
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\YurtCordClient.csproj.CoreCompileInputs.cache
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\YurtCordClient.dll
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\refint\YurtCordClient.dll
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\YurtCordClient.pdb
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\YurtCordClient.genruntimeconfig.cache
+C:\Users\thewi\source\repos\client\client\obj\Debug\net8.0\ref\YurtCordClient.dll

@@ -1,0 +1,14 @@
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Server-uswest.exe
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Server-uswest.deps.json
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Server-uswest.runtimeconfig.json
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Server-uswest.dll
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\bin\Debug\net8.0\Server-uswest.pdb
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Server-uswest.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Server-uswest.AssemblyInfoInputs.cache
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Server-uswest.AssemblyInfo.cs
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Server-uswest.csproj.CoreCompileInputs.cache
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Server-uswest.dll
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\refint\Server-uswest.dll
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Server-uswest.pdb
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\Server-uswest.genruntimeconfig.cache
+C:\Users\thewi\source\repos\ConsoleApp3\ConsoleApp3\obj\Debug\net8.0\ref\Server-uswest.dll
