@@ -1,351 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Net.WebSockets;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace EnhancedRelayClient
-{
-    enum ClientState
-    {
-        Connecting,
-        Authentication,
-        Registration,
-        Connected
-    }
-
-    class Program
-    {
-        // Configuration
-        private const int Port = 8080;
-        private const int WebInterfacePort = 8081;
-        private const string DefaultServerHost = "162.248.94.105";
-
-        // Console client state
-        private static TcpClient _client;
-        private static NetworkStream _stream;
-        private static bool _connected = false;
-        private static CancellationTokenSource _cts;
-        private static string _username = "";
-        private static string _currentRoom = "lobby";
-        private static decimal _credits = 0;
-        private static ClientState _state = ClientState.Connecting;
-        private static readonly List<string> _messageHistory = new List<string>();
-        private static readonly List<string> _shoutboxMessages = new List<string>();
-        private static readonly List<string> _roomMessages = new List<string>();
-        private static readonly int _maxHistorySize = 100;
-        private static readonly object _consoleLock = new object();
-        private static string _serverHost;
-
-        // Web interface state
-        private static HttpListener _httpListener;
-        private static bool _runningWebInterface = false;
-        private static readonly string _webContentHtml = GetWebInterfaceHtml();
-
-        static async Task Main(string[] args)
-        {
-            _cts = new CancellationTokenSource();
-
-            try
-            {
-                // Show interface selection
-                if (!args.Contains("--web") && !args.Contains("--console"))
-                {
-                    Console.WriteLine("Choose your preferred interface:");
-                    Console.WriteLine("1. Console Interface");
-                    Console.WriteLine("2. Web Interface");
-                    Console.Write("Enter your choice (1 or 2): ");
-
-                    string choice = Console.ReadLine();
-
-                    if (choice == "2")
-                    {
-                        await RunWebInterfaceAsync();
-                    }
-                    else
-                    {
-                        await RunConsoleInterfaceAsync();
-                    }
-                }
-                else if (args.Contains("--web"))
-                {
-                    await RunWebInterfaceAsync();
-                }
-                else
-                {
-                    await RunConsoleInterfaceAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-            }
-            finally
-            {
-                // Clean up
-                _cts.Cancel();
-                CloseConnection();
-
-                if (!_runningWebInterface)
-                {
-                    Console.Clear();
-                    Console.WriteLine("Disconnected from server. Press any key to exit.");
-                    Console.ReadKey();
-                }
-            }
-        }
-
-        #region Web Interface Implementation
-
-        private static async Task RunWebInterfaceAsync()
-        {
-            _runningWebInterface = true;
-            Console.Title = "YurtCord Web Interface Server";
-
-            try
-            {
-                Console.WriteLine("Starting YurtCord Web Interface...");
-
-                // Ask for server address
-                Console.Write($"Enter server address (or press Enter for {DefaultServerHost}): ");
-                _serverHost = Console.ReadLine();
-                if (string.IsNullOrWhiteSpace(_serverHost))
-                {
-                    _serverHost = DefaultServerHost;
-                }
-
-                // Start HTTP server for web interface
-                _httpListener = new HttpListener();
-                _httpListener.Prefixes.Add($"http://localhost:{WebInterfacePort}/");
-                _httpListener.Start();
-
-                Console.WriteLine($"Web interface started on http://localhost:{WebInterfacePort}/");
-                Console.WriteLine("Opening browser...");
-
-                // Open the web interface in browser
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = $"http://localhost:{WebInterfacePort}/",
-                    UseShellExecute = true
-                });
-
-                // Handle HTTP requests
-                await HandleHttpRequestsAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Web interface error: {ex.Message}");
-            }
-            finally
-            {
-                _httpListener?.Close();
-                Console.WriteLine("Web interface server stopped. Press any key to exit.");
-                Console.ReadKey();
-            }
-        }
-
-        private static async Task HandleHttpRequestsAsync()
-        {
-            try
-            {
-                while (!_cts.Token.IsCancellationRequested)
-                {
-                    var context = await _httpListener.GetContextAsync();
-
-                    if (context.Request.IsWebSocketRequest)
-                    {
-                        ProcessWebSocketRequest(context);
-                    }
-                    else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/switch-to-console")
-                    {
-                        // Handle switch to console mode
-                        HandleSwitchToConsoleRequest(context);
-                    }
-                    else
-                    {
-                        // Serve HTML content
-                        await ServeHtmlContentAsync(context);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error handling HTTP requests: {ex.Message}");
-            }
-        }
-
-        private static void ProcessWebSocketRequest(HttpListenerContext context)
-        {
-            Task.Run(async () =>
-            {
-                WebSocketContext webSocketContext = null;
-                WebSocket webSocket = null;
-                TcpClient serverClient = null;
-                NetworkStream serverStream = null;
-
-                try
-                {
-                    // Accept WebSocket connection
-                    webSocketContext = await context.AcceptWebSocketAsync(subProtocol: null);
-                    webSocket = webSocketContext.WebSocket;
-
-                    Console.WriteLine("WebSocket connection established");
-
-                    // Connect to YurtCord server
-                    serverClient = new TcpClient();
-                    await serverClient.ConnectAsync(_serverHost, Port);
-                    serverStream = serverClient.GetStream();
-
-                    Console.WriteLine($"Connected to YurtCord server at {_serverHost}:{Port}");
-
-                    // Start receiving from server
-                    var serverToClientTask = ForwardServerToClientAsync(serverStream, webSocket);
-
-                    // Handle client to server communication
-                    byte[] buffer = new byte[4096];
-                    WebSocketReceiveResult receiveResult;
-
-                    while (webSocket.State == WebSocketState.Open)
-                    {
-                        receiveResult = await webSocket.ReceiveAsync(
-                            new ArraySegment<byte>(buffer), CancellationToken.None);
-
-                        if (receiveResult.MessageType == WebSocketMessageType.Close)
-                        {
-                            await webSocket.CloseAsync(
-                                WebSocketCloseStatus.NormalClosure,
-                                "Connection closed by client",
-                                CancellationToken.None);
-                        }
-                        else if (receiveResult.MessageType == WebSocketMessageType.Text)
-                        {
-                            string message = Encoding.UTF8.GetString(
-                                buffer, 0, receiveResult.Count);
-
-                            // Forward to server
-                            byte[] serverData = Encoding.UTF8.GetBytes(message);
-                            await serverStream.WriteAsync(serverData, 0, serverData.Length);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"WebSocket error: {ex.Message}");
-                }
-                finally
-                {
-                    // Clean up resources
-                    webSocket?.Dispose();
-                    serverStream?.Dispose();
-                    serverClient?.Dispose();
-                }
-            });
-        }
-
-        private static async Task ForwardServerToClientAsync(NetworkStream serverStream, WebSocket webSocket)
-        {
-            byte[] buffer = new byte[4096];
-
-            try
-            {
-                while (webSocket.State == WebSocketState.Open)
-                {
-                    // Use a small delay to prevent high CPU usage
-                    await Task.Delay(50);
-
-                    // Check if there is data available to read
-                    if (serverStream.DataAvailable)
-                    {
-                        int bytesRead = await serverStream.ReadAsync(buffer, 0, buffer.Length);
-
-                        if (bytesRead > 0)
-                        {
-                            // Forward to WebSocket client
-                            await webSocket.SendAsync(
-                                new ArraySegment<byte>(buffer, 0, bytesRead),
-                                WebSocketMessageType.Text,
-                                true,
-                                CancellationToken.None);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error forwarding data: {ex.Message}");
-            }
-        }
-
-        private static void HandleSwitchToConsoleRequest(HttpListenerContext context)
-        {
-            try
-            {
-                string response = "{\"success\":true,\"message\":\"Switching to console mode\"}";
-                byte[] buffer = Encoding.UTF8.GetBytes(response);
-
-                context.Response.ContentType = "application/json";
-                context.Response.ContentLength64 = buffer.Length;
-                context.Response.OutputStream.Write(buffer, 0, buffer.Length);
-                context.Response.OutputStream.Close();
-
-                // Stop the web interface and start console interface
-                Task.Run(async () =>
-                {
-                    // Give the browser time to receive the response
-                    await Task.Delay(500);
-
-                    // Stop web server
-                    _httpListener.Stop();
-                    _runningWebInterface = false;
-
-                    // Start console interface
-                    await RunConsoleInterfaceAsync();
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error handling switch to console: {ex.Message}");
-                context.Response.StatusCode = 500;
-                context.Response.OutputStream.Close();
-            }
-        }
-
-        private static async Task ServeHtmlContentAsync(HttpListenerContext context)
-        {
-            try
-            {
-                string responseString = _webContentHtml;
-                byte[] buffer = Encoding.UTF8.GetBytes(responseString);
-
-                context.Response.ContentType = "text/html";
-                context.Response.ContentLength64 = buffer.Length;
-                await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error serving HTML: {ex.Message}");
-            }
-            finally
-            {
-                context.Response.OutputStream.Close();
-            }
-        }
-
-        private static string GetWebInterfaceHtml()
-        {
-            // This is the entire web interface HTML (including embedded CSS and JavaScript)
-            return @"<!DOCTYPE html>
-<html lang=""en"">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset=""UTF-8"">
-    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YurtCord</title>
-    <link href=""https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"" rel=""stylesheet"">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
             --primary-color: #6a5acd;
@@ -1072,7 +731,7 @@ namespace EnhancedRelayClient
         }
 
         .loading:after {
-            content: "" "";
+            content: " ";
             display: block;
             width: 64px;
             height: 64px;
@@ -1373,57 +1032,57 @@ namespace EnhancedRelayClient
 </head>
 <body>
     <!-- Auth views -->
-    <div id=""auth-view"">
-        <div class=""auth-container"">
-            <div class=""auth-box"">
-                <div class=""auth-title"">
-                    <i class=""fas fa-comments""></i>
+    <div id="auth-view">
+        <div class="auth-container">
+            <div class="auth-box">
+                <div class="auth-title">
+                    <i class="fas fa-comments"></i>
                     YurtCord
                 </div>
                 
-                <div id=""login-form"" class=""auth-form"">
-                    <div class=""input-group"">
-                        <label class=""input-label"">Username</label>
-                        <input type=""text"" id=""login-username"" class=""input-field"" placeholder=""Enter your username"">
+                <div id="login-form" class="auth-form">
+                    <div class="input-group">
+                        <label class="input-label">Username</label>
+                        <input type="text" id="login-username" class="input-field" placeholder="Enter your username">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Password</label>
-                        <input type=""password"" id=""login-password"" class=""input-field"" placeholder=""Enter your password"">
+                    <div class="input-group">
+                        <label class="input-label">Password</label>
+                        <input type="password" id="login-password" class="input-field" placeholder="Enter your password">
                     </div>
                     
-                    <button id=""login-btn"" class=""auth-submit"">Login</button>
+                    <button id="login-btn" class="auth-submit">Login</button>
                     
-                    <div class=""auth-toggle"">
-                        Don't have an account? <button id=""show-register"" class=""auth-toggle-btn"">Register</button>
+                    <div class="auth-toggle">
+                        Don't have an account? <button id="show-register" class="auth-toggle-btn">Register</button>
                     </div>
                 </div>
                 
-                <div id=""register-form"" class=""auth-form"" style=""display: none;"">
-                    <div class=""input-group"">
-                        <label class=""input-label"">Username</label>
-                        <input type=""text"" id=""register-username"" class=""input-field"" placeholder=""Choose a username"">
+                <div id="register-form" class="auth-form" style="display: none;">
+                    <div class="input-group">
+                        <label class="input-label">Username</label>
+                        <input type="text" id="register-username" class="input-field" placeholder="Choose a username">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Password</label>
-                        <input type=""password"" id=""register-password"" class=""input-field"" placeholder=""Choose a password"">
+                    <div class="input-group">
+                        <label class="input-label">Password</label>
+                        <input type="password" id="register-password" class="input-field" placeholder="Choose a password">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Confirm Password</label>
-                        <input type=""password"" id=""register-confirm"" class=""input-field"" placeholder=""Confirm your password"">
+                    <div class="input-group">
+                        <label class="input-label">Confirm Password</label>
+                        <input type="password" id="register-confirm" class="input-field" placeholder="Confirm your password">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Email</label>
-                        <input type=""email"" id=""register-email"" class=""input-field"" placeholder=""Enter your email"">
+                    <div class="input-group">
+                        <label class="input-label">Email</label>
+                        <input type="email" id="register-email" class="input-field" placeholder="Enter your email">
                     </div>
                     
-                    <button id=""register-btn"" class=""auth-submit"">Register</button>
+                    <button id="register-btn" class="auth-submit">Register</button>
                     
-                    <div class=""auth-toggle"">
-                        Already have an account? <button id=""show-login"" class=""auth-toggle-btn"">Login</button>
+                    <div class="auth-toggle">
+                        Already have an account? <button id="show-login" class="auth-toggle-btn">Login</button>
                     </div>
                 </div>
             </div>
@@ -1431,50 +1090,50 @@ namespace EnhancedRelayClient
     </div>
 
     <!-- Main app view -->
-    <div id=""app-view"" style=""display: none;"">
+    <div id="app-view" style="display: none;">
         <header>
-            <div class=""header-content"">
-                <div class=""logo"">
-                    <i class=""fas fa-comments""></i>
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-comments"></i>
                     YurtCord
                 </div>
                 
-                <div class=""user-info"">
-                    <div class=""user-badge"">
-                        <i class=""fas fa-user""></i>
-                        <span id=""username-display"">Username</span>
+                <div class="user-info">
+                    <div class="user-badge">
+                        <i class="fas fa-user"></i>
+                        <span id="username-display">Username</span>
                     </div>
                     
-                    <div class=""credits"">
-                        <i class=""fas fa-coins""></i>
-                        <span id=""credits-display"">0.00</span>
+                    <div class="credits">
+                        <i class="fas fa-coins"></i>
+                        <span id="credits-display">0.00</span>
                     </div>
                 </div>
             </div>
             
-            <div class=""room-info"">
+            <div class="room-info">
                 <div>
-                    Current Room: <span id=""current-room"">lobby</span>
+                    Current Room: <span id="current-room">lobby</span>
                 </div>
                 
-                <div class=""quick-actions"">
-                    <button class=""action-btn"" id=""help-btn"">
-                        <i class=""fas fa-question-circle""></i>
+                <div class="quick-actions">
+                    <button class="action-btn" id="help-btn">
+                        <i class="fas fa-question-circle"></i>
                         Help
                     </button>
                     
-                    <button class=""action-btn"" id=""create-room-btn"">
-                        <i class=""fas fa-plus-circle""></i>
+                    <button class="action-btn" id="create-room-btn">
+                        <i class="fas fa-plus-circle"></i>
                         Create Room
                     </button>
                     
-                    <button class=""action-btn"" id=""transfer-btn"">
-                        <i class=""fas fa-exchange-alt""></i>
+                    <button class="action-btn" id="transfer-btn">
+                        <i class="fas fa-exchange-alt"></i>
                         Transfer
                     </button>
                     
-                    <button class=""action-btn"" id=""logout-btn"">
-                        <i class=""fas fa-sign-out-alt""></i>
+                    <button class="action-btn" id="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
                         Logout
                     </button>
                 </div>
@@ -1482,56 +1141,56 @@ namespace EnhancedRelayClient
         </header>
         
         <main>
-            <div class=""sidebar"">
-                <div class=""sidebar-title"">
+            <div class="sidebar">
+                <div class="sidebar-title">
                     Rooms
-                    <button id=""refresh-rooms""><i class=""fas fa-sync-alt""></i></button>
+                    <button id="refresh-rooms"><i class="fas fa-sync-alt"></i></button>
                 </div>
                 
-                <div class=""tab-content"">
-                    <ul class=""room-list"" id=""room-list"">
-                        <li class=""room-item active"">
-                            <div class=""room-icon""><i class=""fas fa-home""></i></div>
+                <div class="tab-content">
+                    <ul class="room-list" id="room-list">
+                        <li class="room-item active">
+                            <div class="room-icon"><i class="fas fa-home"></i></div>
                             <span>lobby</span>
                         </li>
                     </ul>
                 </div>
             </div>
             
-            <div class=""chat-container"">
-                <div class=""tabs"">
-                    <button class=""tab active"" data-view=""room-chat"">Room Chat</button>
-                    <button class=""tab"" data-view=""shoutbox"">Shoutbox</button>
-                    <button class=""tab"" data-view=""gambling-view"">Gambling</button>
+            <div class="chat-container">
+                <div class="tabs">
+                    <button class="tab active" data-view="room-chat">Room Chat</button>
+                    <button class="tab" data-view="shoutbox">Shoutbox</button>
+                    <button class="tab" data-view="gambling-view">Gambling</button>
                 </div>
                 
-                <div class=""chat-view"">
-                    <div class=""messages"" id=""messages"">
-                        <div class=""message system-message"">
-                            <div class=""message-content"">Welcome to YurtCord! Type /help to see available commands.</div>
+                <div class="chat-view">
+                    <div class="messages" id="messages">
+                        <div class="message system-message">
+                            <div class="message-content">Welcome to YurtCord! Type /help to see available commands.</div>
                         </div>
                     </div>
                     
-                    <div class=""message-form"">
-                        <textarea id=""message-input"" class=""message-input"" placeholder=""Type a message or command...""></textarea>
+                    <div class="message-form">
+                        <textarea id="message-input" class="message-input" placeholder="Type a message or command..."></textarea>
                         
-                        <div class=""message-actions"">
-                            <button id=""send-btn"" class=""send-btn"">
-                                <i class=""fas fa-paper-plane""></i>
+                        <div class="message-actions">
+                            <button id="send-btn" class="send-btn">
+                                <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class=""sidebar"">
-                <div class=""sidebar-title"">
+            <div class="sidebar">
+                <div class="sidebar-title">
                     Online Users
-                    <button id=""refresh-users""><i class=""fas fa-sync-alt""></i></button>
+                    <button id="refresh-users"><i class="fas fa-sync-alt"></i></button>
                 </div>
                 
-                <div class=""tab-content"">
-                    <ul class=""user-list"" id=""user-list"">
+                <div class="tab-content">
+                    <ul class="user-list" id="user-list">
                         <!-- User list will be populated dynamically -->
                     </ul>
                 </div>
@@ -1539,14 +1198,14 @@ namespace EnhancedRelayClient
         </main>
         
         <!-- Command modals -->
-        <div id=""help-modal"" class=""modal"">
-            <div class=""modal-content"">
-                <div class=""modal-header"">
-                    <div class=""modal-title"">Help</div>
-                    <button class=""close-modal"">&times;</button>
+        <div id="help-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Help</div>
+                    <button class="close-modal">&times;</button>
                 </div>
                 
-                <div class=""modal-body"">
+                <div class="modal-body">
                     <h3>Available Commands</h3>
                     <p><strong>/help</strong> - Display this help message</p>
                     <p><strong>/users</strong> - List all connected users</p>
@@ -1575,244 +1234,244 @@ namespace EnhancedRelayClient
                     <p><strong>/leaderboard</strong> - View top gamblers</p>
                 </div>
                 
-                <div class=""modal-footer"">
-                    <button class=""modal-btn confirm-btn"">OK</button>
+                <div class="modal-footer">
+                    <button class="modal-btn confirm-btn">OK</button>
                 </div>
             </div>
         </div>
         
-        <div id=""create-room-modal"" class=""modal"">
-            <div class=""modal-content"">
-                <div class=""modal-header"">
-                    <div class=""modal-title"">Create New Room</div>
-                    <button class=""close-modal"">&times;</button>
+        <div id="create-room-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Create New Room</div>
+                    <button class="close-modal">&times;</button>
                 </div>
                 
-                <div class=""modal-body"">
-                    <div class=""input-group"">
-                        <label class=""input-label"">Room Name</label>
-                        <input type=""text"" id=""room-name"" class=""input-field"" placeholder=""Enter room name"">
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label class="input-label">Room Name</label>
+                        <input type="text" id="room-name" class="input-field" placeholder="Enter room name">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Description (optional)</label>
-                        <input type=""text"" id=""room-description"" class=""input-field"" placeholder=""Enter room description"">
+                    <div class="input-group">
+                        <label class="input-label">Description (optional)</label>
+                        <input type="text" id="room-description" class="input-field" placeholder="Enter room description">
                     </div>
                 </div>
                 
-                <div class=""modal-footer"">
-                    <button class=""modal-btn cancel-btn"">Cancel</button>
-                    <button id=""create-room-confirm"" class=""modal-btn confirm-btn"">Create</button>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn">Cancel</button>
+                    <button id="create-room-confirm" class="modal-btn confirm-btn">Create</button>
                 </div>
             </div>
         </div>
         
-        <div id=""transfer-modal"" class=""modal"">
-            <div class=""modal-content"">
-                <div class=""modal-header"">
-                    <div class=""modal-title"">Transfer Credits</div>
-                    <button class=""close-modal"">&times;</button>
+        <div id="transfer-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Transfer Credits</div>
+                    <button class="close-modal">&times;</button>
                 </div>
                 
-                <div class=""modal-body"">
-                    <div class=""input-group"">
-                        <label class=""input-label"">Recipient</label>
-                        <input type=""text"" id=""transfer-recipient"" class=""input-field"" placeholder=""Enter username"">
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label class="input-label">Recipient</label>
+                        <input type="text" id="transfer-recipient" class="input-field" placeholder="Enter username">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Amount</label>
-                        <input type=""number"" id=""transfer-amount"" class=""input-field"" placeholder=""Enter amount"">
+                    <div class="input-group">
+                        <label class="input-label">Amount</label>
+                        <input type="number" id="transfer-amount" class="input-field" placeholder="Enter amount">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Description (optional)</label>
-                        <input type=""text"" id=""transfer-description"" class=""input-field"" placeholder=""Enter description"">
+                    <div class="input-group">
+                        <label class="input-label">Description (optional)</label>
+                        <input type="text" id="transfer-description" class="input-field" placeholder="Enter description">
                     </div>
                 </div>
                 
-                <div class=""modal-footer"">
-                    <button class=""modal-btn cancel-btn"">Cancel</button>
-                    <button id=""transfer-confirm"" class=""modal-btn confirm-btn"">Transfer</button>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn">Cancel</button>
+                    <button id="transfer-confirm" class="modal-btn confirm-btn">Transfer</button>
                 </div>
             </div>
         </div>
         
-        <div id=""dice-modal"" class=""modal"">
-            <div class=""modal-content"">
-                <div class=""modal-header"">
-                    <div class=""modal-title"">Play Dice</div>
-                    <button class=""close-modal"">&times;</button>
+        <div id="dice-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Play Dice</div>
+                    <button class="close-modal">&times;</button>
                 </div>
                 
-                <div class=""modal-body"">
-                    <div class=""input-group"">
-                        <label class=""input-label"">Bet Amount</label>
-                        <input type=""number"" id=""dice-amount"" class=""input-field"" placeholder=""Enter bet amount"">
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label class="input-label">Bet Amount</label>
+                        <input type="number" id="dice-amount" class="input-field" placeholder="Enter bet amount">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Target Number (optional, 2-12)</label>
-                        <input type=""number"" id=""dice-target"" class=""input-field"" placeholder=""Enter target number"" min=""2"" max=""12"">
+                    <div class="input-group">
+                        <label class="input-label">Target Number (optional, 2-12)</label>
+                        <input type="number" id="dice-target" class="input-field" placeholder="Enter target number" min="2" max="12">
                     </div>
                 </div>
                 
-                <div class=""modal-footer"">
-                    <button class=""modal-btn cancel-btn"">Cancel</button>
-                    <button id=""dice-confirm"" class=""modal-btn confirm-btn"">Roll Dice</button>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn">Cancel</button>
+                    <button id="dice-confirm" class="modal-btn confirm-btn">Roll Dice</button>
                 </div>
             </div>
         </div>
         
-        <div id=""flip-modal"" class=""modal"">
-            <div class=""modal-content"">
-                <div class=""modal-header"">
-                    <div class=""modal-title"">Flip Coin</div>
-                    <button class=""close-modal"">&times;</button>
+        <div id="flip-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Flip Coin</div>
+                    <button class="close-modal">&times;</button>
                 </div>
                 
-                <div class=""modal-body"">
-                    <div class=""input-group"">
-                        <label class=""input-label"">Bet Amount</label>
-                        <input type=""number"" id=""flip-amount"" class=""input-field"" placeholder=""Enter bet amount"">
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label class="input-label">Bet Amount</label>
+                        <input type="number" id="flip-amount" class="input-field" placeholder="Enter bet amount">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Your Choice</label>
-                        <select id=""flip-choice"" class=""input-field"">
-                            <option value=""HEADS"">HEADS</option>
-                            <option value=""TAILS"">TAILS</option>
+                    <div class="input-group">
+                        <label class="input-label">Your Choice</label>
+                        <select id="flip-choice" class="input-field">
+                            <option value="HEADS">HEADS</option>
+                            <option value="TAILS">TAILS</option>
                         </select>
                     </div>
                 </div>
                 
-                <div class=""modal-footer"">
-                    <button class=""modal-btn cancel-btn"">Cancel</button>
-                    <button id=""flip-confirm"" class=""modal-btn confirm-btn"">Flip Coin</button>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn">Cancel</button>
+                    <button id="flip-confirm" class="modal-btn confirm-btn">Flip Coin</button>
                 </div>
             </div>
         </div>
         
-        <div id=""slots-modal"" class=""modal"">
-            <div class=""modal-content"">
-                <div class=""modal-header"">
-                    <div class=""modal-title"">Play Slots</div>
-                    <button class=""close-modal"">&times;</button>
+        <div id="slots-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Play Slots</div>
+                    <button class="close-modal">&times;</button>
                 </div>
                 
-                <div class=""modal-body"">
-                    <div class=""input-group"">
-                        <label class=""input-label"">Bet Amount</label>
-                        <input type=""number"" id=""slots-amount"" class=""input-field"" placeholder=""Enter bet amount"">
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label class="input-label">Bet Amount</label>
+                        <input type="number" id="slots-amount" class="input-field" placeholder="Enter bet amount">
                     </div>
                 </div>
                 
-                <div class=""modal-footer"">
-                    <button class=""modal-btn cancel-btn"">Cancel</button>
-                    <button id=""slots-confirm"" class=""modal-btn confirm-btn"">Spin</button>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn">Cancel</button>
+                    <button id="slots-confirm" class="modal-btn confirm-btn">Spin</button>
                 </div>
             </div>
         </div>
         
-        <div id=""gamble-modal"" class=""modal"">
-            <div class=""modal-content"">
-                <div class=""modal-header"">
-                    <div class=""modal-title"">Place Bet</div>
-                    <button class=""close-modal"">&times;</button>
+        <div id="gamble-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Place Bet</div>
+                    <button class="close-modal">&times;</button>
                 </div>
                 
-                <div class=""modal-body"">
-                    <div id=""pot-info"">
-                        <h3 id=""pot-name"">Daily Jackpot</h3>
-                        <p id=""pot-description"">Daily jackpot that ends in 24 hours</p>
-                        <p>Total pot: <span id=""pot-total"">0.00</span> credits</p>
-                        <p>Ends in: <span id=""pot-time-remaining"">23h 59m</span></p>
+                <div class="modal-body">
+                    <div id="pot-info">
+                        <h3 id="pot-name">Daily Jackpot</h3>
+                        <p id="pot-description">Daily jackpot that ends in 24 hours</p>
+                        <p>Total pot: <span id="pot-total">0.00</span> credits</p>
+                        <p>Ends in: <span id="pot-time-remaining">23h 59m</span></p>
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Bet Amount</label>
-                        <input type=""number"" id=""gamble-amount"" class=""input-field"" placeholder=""Enter bet amount"">
+                    <div class="input-group">
+                        <label class="input-label">Bet Amount</label>
+                        <input type="number" id="gamble-amount" class="input-field" placeholder="Enter bet amount">
                     </div>
                 </div>
                 
-                <div class=""modal-footer"">
-                    <button class=""modal-btn cancel-btn"">Cancel</button>
-                    <button id=""gamble-confirm"" class=""modal-btn confirm-btn"">Place Bet</button>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn">Cancel</button>
+                    <button id="gamble-confirm" class="modal-btn confirm-btn">Place Bet</button>
                 </div>
             </div>
         </div>
         
-        <div id=""whisper-modal"" class=""modal"">
-            <div class=""modal-content"">
-                <div class=""modal-header"">
-                    <div class=""modal-title"">Whisper Message</div>
-                    <button class=""close-modal"">&times;</button>
+        <div id="whisper-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Whisper Message</div>
+                    <button class="close-modal">&times;</button>
                 </div>
                 
-                <div class=""modal-body"">
-                    <div class=""input-group"">
-                        <label class=""input-label"">To</label>
-                        <input type=""text"" id=""whisper-recipient"" class=""input-field"" placeholder=""Enter username"">
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label class="input-label">To</label>
+                        <input type="text" id="whisper-recipient" class="input-field" placeholder="Enter username">
                     </div>
                     
-                    <div class=""input-group"">
-                        <label class=""input-label"">Message</label>
-                        <textarea id=""whisper-message"" class=""input-field"" placeholder=""Enter your message""></textarea>
+                    <div class="input-group">
+                        <label class="input-label">Message</label>
+                        <textarea id="whisper-message" class="input-field" placeholder="Enter your message"></textarea>
                     </div>
                 </div>
                 
-                <div class=""modal-footer"">
-                    <button class=""modal-btn cancel-btn"">Cancel</button>
-                    <button id=""whisper-confirm"" class=""modal-btn confirm-btn"">Send</button>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn">Cancel</button>
+                    <button id="whisper-confirm" class="modal-btn confirm-btn">Send</button>
                 </div>
             </div>
         </div>
         
         <!-- Game animations -->
-        <div id=""dice-animation"" class=""game-animation"">
-            <div class=""dice-container"">
-                <div class=""dice"" id=""dice1"">6</div>
-                <div class=""dice"" id=""dice2"">6</div>
+        <div id="dice-animation" class="game-animation">
+            <div class="dice-container">
+                <div class="dice" id="dice1">6</div>
+                <div class="dice" id="dice2">6</div>
             </div>
             
-            <div class=""game-result"" id=""dice-result"">Rolling...</div>
+            <div class="game-result" id="dice-result">Rolling...</div>
             
-            <button class=""close-animation"" id=""close-dice"">Continue</button>
+            <button class="close-animation" id="close-dice">Continue</button>
         </div>
         
-        <div id=""coin-animation"" class=""game-animation"">
-            <div class=""coin-container"">
-                <div class=""coin"" id=""coin"">
-                    <div class=""coin-front"">H</div>
-                    <div class=""coin-back"">T</div>
+        <div id="coin-animation" class="game-animation">
+            <div class="coin-container">
+                <div class="coin" id="coin">
+                    <div class="coin-front">H</div>
+                    <div class="coin-back">T</div>
                 </div>
             </div>
             
-            <div class=""game-result"" id=""coin-result"">Flipping...</div>
+            <div class="game-result" id="coin-result">Flipping...</div>
             
-            <button class=""close-animation"" id=""close-coin"">Continue</button>
+            <button class="close-animation" id="close-coin">Continue</button>
         </div>
         
-        <div id=""slots-animation"" class=""game-animation"">
-            <div class=""slots-container"">
-                <div class=""slot""><div class=""slot-reel"" id=""slot1"">🍒</div></div>
-                <div class=""slot""><div class=""slot-reel"" id=""slot2"">🍋</div></div>
-                <div class=""slot""><div class=""slot-reel"" id=""slot3"">🍇</div></div>
+        <div id="slots-animation" class="game-animation">
+            <div class="slots-container">
+                <div class="slot"><div class="slot-reel" id="slot1">🍒</div></div>
+                <div class="slot"><div class="slot-reel" id="slot2">🍋</div></div>
+                <div class="slot"><div class="slot-reel" id="slot3">🍇</div></div>
             </div>
             
-            <div class=""game-result"" id=""slots-result"">Spinning...</div>
+            <div class="game-result" id="slots-result">Spinning...</div>
             
-            <button class=""close-animation"" id=""close-slots"">Continue</button>
+            <button class="close-animation" id="close-slots">Continue</button>
         </div>
         
         <!-- Loading indicator -->
-        <div class=""loading-overlay"" id=""loading-overlay"">
-            <div class=""loading""></div>
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading"></div>
         </div>
         
         <!-- Toggle view button -->
-        <button id=""switch-to-console"" class=""toggle-view-btn"" title=""Switch to Console View"">
-            <i class=""fas fa-terminal""></i>
+        <button id="switch-to-console" class="toggle-view-btn" title="Switch to Console View">
+            <i class="fas fa-terminal"></i>
         </button>
     </div>
 
@@ -1870,7 +1529,7 @@ namespace EnhancedRelayClient
         function initSocket() {
             // Create WebSocket connection to our local server
             // This will be handled by the C# application proxy
-            socket = new WebSocket(`ws://${window.location.hostname}:8081`);
+            socket = new WebSocket('ws://localhost:8081');
             
             socket.onopen = function(event) {
                 console.log('Connected to server');
@@ -2019,7 +1678,7 @@ namespace EnhancedRelayClient
         
         // Message display functions
         function addChatMessage(message) {
-            // Try to extract username and content from messages like ""[Username] Message""
+            // Try to extract username and content from messages like "[Username] Message"
             const usernameMatch = message.match(/^\[(.+?)\] (.+)$/);
             
             if (usernameMatch) {
@@ -2940,11 +2599,10 @@ namespace EnhancedRelayClient
             // Switch to console button
             switchToConsoleBtn.addEventListener('click', function() {
                 // Send a special message to the local server to switch to console mode
-                fetch('/switch-to-console', {
+                fetch('http://localhost:8081/switch-to-console', {
                     method: 'POST'
                 }).then(response => {
                     // The backend will handle closing this window
-                    console.log('Switching to console mode');
                 }).catch(error => {
                     console.error('Error switching to console:', error);
                 });
@@ -2983,1165 +2641,4 @@ namespace EnhancedRelayClient
         });
     </script>
 </body>
-</html>";
-        }
-
-        #endregion
-
-        #region Console Interface Implementation
-
-        private static async Task RunConsoleInterfaceAsync()
-        {
-            Console.Title = "YurtCord";
-
-            try
-            {
-                // Ask for server address
-                Console.Write($"Enter server address (or press Enter for {DefaultServerHost}): ");
-                _serverHost = Console.ReadLine();
-                if (string.IsNullOrWhiteSpace(_serverHost))
-                {
-                    _serverHost = DefaultServerHost;
-                }
-
-                await ConnectToServerAsync();
-
-                // Start a background task to receive messages
-                Task receiveTask = ReceiveMessagesAsync(_cts.Token);
-
-                // Show authentication options
-                await ShowAuthenticationOptions();
-
-                // Main loop for sending messages
-                while (_connected)
-                {
-                    try
-                    {
-                        string input = Console.ReadLine();
-
-                        if (string.IsNullOrEmpty(input))
-                            continue;
-
-                        await ProcessUserInput(input);
-                    }
-                    catch (Exception ex)
-                    {
-                        lock (_consoleLock)
-                        {
-                            AddToMessageHistory($"Error: {ex.Message}", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-            }
-            finally
-            {
-                // Clean up
-                _cts.Cancel();
-                CloseConnection();
-
-                Console.Clear();
-                Console.WriteLine("Disconnected from server. Press any key to exit.");
-                Console.ReadKey();
-            }
-        }
-
-        private static async Task ShowAuthenticationOptions()
-        {
-            Console.Clear();
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("╔══════════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║                    Welcome to YurtCord                               ║");
-            Console.WriteLine("╠══════════════════════════════════════════════════════════════════════╣");
-            Console.WriteLine("║ 1. Login with existing account                                        ║");
-            Console.WriteLine("║ 2. Register a new account                                             ║");
-            Console.WriteLine("║ 3. Exit                                                               ║");
-            Console.WriteLine("╚══════════════════════════════════════════════════════════════════════╝");
-            Console.ResetColor();
-
-            Console.Write("Select an option (1-3): ");
-            string option = Console.ReadLine();
-
-            switch (option)
-            {
-                case "1":
-                    await ShowLoginForm();
-                    break;
-                case "2":
-                    await ShowRegistrationForm();
-                    break;
-                case "3":
-                    _connected = false;
-                    break;
-                default:
-                    Console.WriteLine("Invalid option. Press any key to continue...");
-                    Console.ReadKey();
-                    await ShowAuthenticationOptions();
-                    break;
-            }
-        }
-
-        private static async Task ShowLoginForm()
-        {
-            Console.Clear();
-            Console.WriteLine("=== Login ===");
-            Console.Write("Username: ");
-            string username = Console.ReadLine();
-
-            Console.Write("Password: ");
-            string password = ReadPassword();
-
-            _state = ClientState.Authentication;
-            _username = username;
-
-            // Send login command
-            await SendMessageAsync($"LOGIN {username} {password}");
-        }
-
-        private static async Task ShowRegistrationForm()
-        {
-            Console.Clear();
-            Console.WriteLine("=== Register New Account ===");
-            Console.Write("Username (letters and numbers only): ");
-            string username = Console.ReadLine();
-
-            Console.Write("Password: ");
-            string password = ReadPassword();
-
-            Console.Write("Confirm Password: ");
-            string confirmPassword = ReadPassword();
-
-            if (password != confirmPassword)
-            {
-                Console.WriteLine("Passwords do not match. Press any key to try again...");
-                Console.ReadKey();
-                await ShowRegistrationForm();
-                return;
-            }
-
-            Console.Write("Email: ");
-            string email = Console.ReadLine();
-
-            _state = ClientState.Registration;
-
-            // Send registration command
-            await SendMessageAsync($"REGISTER {username} {password} {email}");
-
-            // Wait for server response
-            await Task.Delay(1000);
-
-            // Go back to auth options (server will tell user to login if registration was successful)
-            await ShowAuthenticationOptions();
-        }
-
-        private static string ReadPassword()
-        {
-            string password = "";
-            ConsoleKeyInfo key;
-
-            do
-            {
-                key = Console.ReadKey(true);
-
-                if (key.Key != ConsoleKey.Enter && key.Key != ConsoleKey.Backspace)
-                {
-                    password += key.KeyChar;
-                    Console.Write("*");
-                }
-                else if (key.Key == ConsoleKey.Backspace && password.Length > 0)
-                {
-                    password = password.Substring(0, password.Length - 1);
-                    Console.Write("\b \b");
-                }
-            } while (key.Key != ConsoleKey.Enter);
-
-            Console.WriteLine();
-            return password;
-        }
-
-        private static void InitializeInterface()
-        {
-            Console.Clear();
-            Console.CursorVisible = true;
-
-            // Set console height to ensure sufficient space
-            try
-            {
-                Console.WindowHeight = Math.Max(Console.WindowHeight, 40);
-                Console.BufferHeight = Math.Max(Console.WindowHeight, 1000);
-            }
-            catch
-            {
-                // Ignore if we can't set the window size
-            }
-
-            // Draw header
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("╔════════════════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine($"║  YurtCord Client - Connected as: {_username.PadRight(42)}║");
-            Console.WriteLine($"║  Current Room: {_currentRoom.PadRight(52)}║");
-            Console.WriteLine($"║  Credits: {_credits.ToString("0.00").PadRight(56)}║");
-            Console.WriteLine("╠════════════════════════════════════════════════════════════════════════════╣");
-            Console.WriteLine("║ Type /help for commands | /rooms to list rooms | /users to see online users ║");
-            Console.WriteLine("╚════════════════════════════════════════════════════════════════════════════╝");
-            Console.ResetColor();
-
-            // Tabs for different views
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("[ Room Chat ]");
-            Console.ResetColor();
-            Console.Write(" | ");
-            Console.Write("[ Shoutbox ]");
-            Console.Write(" | ");
-            Console.Write("[ Gambling ]");
-            Console.WriteLine();
-            Console.WriteLine(new string('─', Console.WindowWidth - 1));
-
-            // Draw chat area
-            for (int i = 0; i < 16; i++)
-            {
-                Console.WriteLine();
-            }
-
-            // Draw input separator
-            Console.WriteLine(new string('─', Console.WindowWidth - 1));
-
-            // Reserve fixed space for input area (3 lines)
-            Console.WriteLine(new string(' ', Console.WindowWidth - 1));
-            Console.WriteLine(new string(' ', Console.WindowWidth - 1));
-            Console.WriteLine(new string(' ', Console.WindowWidth - 1));
-
-            // Move cursor back up to input area
-            Console.SetCursorPosition(0, Console.WindowHeight - 4);
-            Console.Write("> ");
-        }
-
-        private static void RefreshDisplay()
-        {
-            lock (_consoleLock)
-            {
-                // Save the current input
-                int inputLinePosition = Console.WindowHeight - 4;
-                string currentInput = "";
-
-                // Only try to read input if cursor is on the input line
-                if (Console.CursorTop >= inputLinePosition && Console.CursorLeft >= 2)
-                {
-                    // Save the exact cursor position within the input
-                    int inputCursorPosition = Console.CursorLeft - 2;
-
-                    // Get the current input text
-                    Console.SetCursorPosition(2, inputLinePosition);
-
-                    // Read the current input (this is a bit hacky but works)
-                    StringBuilder input = new StringBuilder();
-                    int maxWidth = Console.WindowWidth - 3;
-
-                    // Create a temporary buffer to read what's on screen
-                    char[] buffer = new char[maxWidth];
-                    for (int i = 0; i < maxWidth; i++)
-                    {
-                        if (Console.CursorLeft < Console.WindowWidth - 1)
-                        {
-                            try
-                            {
-                                // Try to read the character at the current position
-                                char c = ' ';
-                                Console.CursorLeft++;
-                                buffer[i] = c;
-                            }
-                            catch
-                            {
-                                // If we can't read, just assume it's a space
-                                buffer[i] = ' ';
-                            }
-                        }
-                        else
-                        {
-                            buffer[i] = ' ';
-                        }
-                    }
-
-                    currentInput = new string(buffer).TrimEnd();
-                }
-
-                // Update header with latest information
-                Console.SetCursorPosition(0, 0);
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine("╔════════════════════════════════════════════════════════════════════════════╗");
-                Console.WriteLine($"║  Yurt Cord Client - Connected as: {_username.PadRight(42)}║");
-                Console.WriteLine($"║  Current Room: {_currentRoom.PadRight(52)}║");
-                Console.WriteLine($"║  Credits: {_credits.ToString("0.00").PadRight(56)}║");
-                Console.WriteLine("╠════════════════════════════════════════════════════════════════════════════╣");
-                Console.WriteLine("║ Type /help for commands | /rooms to list rooms | /users to see online users ║");
-                Console.WriteLine("╚════════════════════════════════════════════════════════════════════════════╝");
-                Console.ResetColor();
-
-                // Position cursor at the start of the message area
-                Console.SetCursorPosition(0, 9);
-
-                // Clear message area (from line 9 to input area start)
-                for (int i = 9; i < inputLinePosition - 1; i++)
-                {
-                    Console.SetCursorPosition(0, i);
-                    Console.Write(new string(' ', Console.WindowWidth - 1));
-                }
-
-                // Display messages
-                Console.SetCursorPosition(0, 9);
-
-                // Determine which message list to show
-                List<string> messagesToShow = _roomMessages;
-
-                // Calculate how many messages we can display
-                int maxMessagesToShow = inputLinePosition - 10;
-
-                // Display messages
-                int startIdx = Math.Max(0, messagesToShow.Count - maxMessagesToShow);
-                for (int i = startIdx; i < messagesToShow.Count; i++)
-                {
-                    string msg = messagesToShow[i];
-
-                    if (msg.StartsWith("[PM"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Magenta;
-                    }
-                    else if (msg.StartsWith("*"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                    }
-                    else if (msg.StartsWith("System:"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                    }
-                    else if (msg.StartsWith("[SERVER") || msg.StartsWith("Available commands"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                    }
-                    else if (msg.StartsWith("[SHOUTBOX]"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Cyan;
-                    }
-                    else if (msg.StartsWith("[GAMBLING]"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                    }
-
-                    Console.WriteLine(msg);
-                    Console.ResetColor();
-                }
-
-                // Clear the input area
-                Console.SetCursorPosition(0, inputLinePosition);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-                Console.SetCursorPosition(0, inputLinePosition + 1);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-                Console.SetCursorPosition(0, inputLinePosition + 2);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-
-                // Restore input line prompt and text
-                Console.SetCursorPosition(0, inputLinePosition);
-                Console.Write("> ");
-                Console.Write(currentInput);
-
-                // Set cursor to the right place
-                Console.SetCursorPosition(2 + currentInput.Length, inputLinePosition);
-            }
-        }
-
-        private static void DisplayShoutbox()
-        {
-            lock (_consoleLock)
-            {
-                // Save the current input
-                int inputLinePosition = Console.WindowHeight - 4;
-                string currentInput = "";
-
-                if (Console.CursorTop >= inputLinePosition && Console.CursorLeft >= 2)
-                {
-                    // Save the exact cursor position within the input
-                    int inputCursorPosition = Console.CursorLeft - 2;
-
-                    // Get current input text
-                    Console.SetCursorPosition(2, inputLinePosition);
-
-                    // Read the current input (this is a bit hacky but works)
-                    StringBuilder input = new StringBuilder();
-                    int maxWidth = Console.WindowWidth - 3;
-
-                    // Create a temporary buffer to read what's on screen
-                    char[] buffer = new char[maxWidth];
-                    for (int i = 0; i < maxWidth; i++)
-                    {
-                        if (Console.CursorLeft < Console.WindowWidth - 1)
-                        {
-                            try
-                            {
-                                // Try to read the character at the current position
-                                char c = ' ';
-                                Console.CursorLeft++;
-                                buffer[i] = c;
-                            }
-                            catch
-                            {
-                                // If we can't read, just assume it's a space
-                                buffer[i] = ' ';
-                            }
-                        }
-                        else
-                        {
-                            buffer[i] = ' ';
-                        }
-                    }
-
-                    currentInput = new string(buffer).TrimEnd();
-                }
-
-                // Update tabs
-                Console.SetCursorPosition(0, 7);
-                Console.Write("[ Room Chat ]");
-                Console.Write(" | ");
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write("[ Shoutbox ]");
-                Console.ResetColor();
-                Console.Write(" | ");
-                Console.Write("[ Gambling ]");
-                Console.WriteLine();
-                Console.WriteLine(new string('─', Console.WindowWidth - 1));
-
-                // Position cursor at the start of the message area
-                Console.SetCursorPosition(0, 9);
-
-                // Clear message area
-                for (int i = 9; i < inputLinePosition - 1; i++)
-                {
-                    Console.SetCursorPosition(0, i);
-                    Console.Write(new string(' ', Console.WindowWidth - 1));
-                }
-
-                // Display messages
-                Console.SetCursorPosition(0, 9);
-
-                // Calculate how many messages we can display
-                int maxMessagesToShow = inputLinePosition - 10;
-
-                // Display shoutbox messages
-                int startIdx = Math.Max(0, _shoutboxMessages.Count - maxMessagesToShow);
-                for (int i = startIdx; i < _shoutboxMessages.Count; i++)
-                {
-                    string msg = _shoutboxMessages[i];
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine(msg);
-                    Console.ResetColor();
-                }
-
-                // Clear the input area
-                Console.SetCursorPosition(0, inputLinePosition);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-                Console.SetCursorPosition(0, inputLinePosition + 1);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-                Console.SetCursorPosition(0, inputLinePosition + 2);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-
-                // Restore input line prompt and text
-                Console.SetCursorPosition(0, inputLinePosition);
-                Console.Write("> ");
-                Console.Write(currentInput);
-
-                // Set cursor to the right place
-                Console.SetCursorPosition(2 + currentInput.Length, inputLinePosition);
-            }
-        }
-
-        private static void DisplayRoomChat()
-        {
-            lock (_consoleLock)
-            {
-                // Save the current input
-                int inputLinePosition = Console.WindowHeight - 4;
-                string currentInput = "";
-
-                if (Console.CursorTop >= inputLinePosition && Console.CursorLeft >= 2)
-                {
-                    // Save the exact cursor position within the input
-                    int inputCursorPosition = Console.CursorLeft - 2;
-
-                    // Get current input text
-                    Console.SetCursorPosition(2, inputLinePosition);
-
-                    // Read the current input (this is a bit hacky but works)
-                    StringBuilder input = new StringBuilder();
-                    int maxWidth = Console.WindowWidth - 3;
-
-                    // Create a temporary buffer to read what's on screen
-                    char[] buffer = new char[maxWidth];
-                    for (int i = 0; i < maxWidth; i++)
-                    {
-                        if (Console.CursorLeft < Console.WindowWidth - 1)
-                        {
-                            try
-                            {
-                                // Try to read the character at the current position
-                                char c = ' ';
-                                Console.CursorLeft++;
-                                buffer[i] = c;
-                            }
-                            catch
-                            {
-                                // If we can't read, just assume it's a space
-                                buffer[i] = ' ';
-                            }
-                        }
-                        else
-                        {
-                            buffer[i] = ' ';
-                        }
-                    }
-
-                    currentInput = new string(buffer).TrimEnd();
-                }
-
-                // Update tabs
-                Console.SetCursorPosition(0, 7);
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write("[ Room Chat ]");
-                Console.ResetColor();
-                Console.Write(" | ");
-                Console.Write("[ Shoutbox ]");
-                Console.Write(" | ");
-                Console.Write("[ Gambling ]");
-                Console.WriteLine();
-                Console.WriteLine(new string('─', Console.WindowWidth - 1));
-
-                // Position cursor at the start of the message area
-                Console.SetCursorPosition(0, 9);
-
-                // Clear message area
-                for (int i = 9; i < inputLinePosition - 1; i++)
-                {
-                    Console.SetCursorPosition(0, i);
-                    Console.Write(new string(' ', Console.WindowWidth - 1));
-                }
-
-                // Display messages
-                Console.SetCursorPosition(0, 9);
-
-                // Calculate how many messages we can display
-                int maxMessagesToShow = inputLinePosition - 10;
-
-                // Display room messages
-                int startIdx = Math.Max(0, _roomMessages.Count - maxMessagesToShow);
-                for (int i = startIdx; i < _roomMessages.Count; i++)
-                {
-                    string msg = _roomMessages[i];
-
-                    if (msg.StartsWith("[PM"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Magenta;
-                    }
-                    else if (msg.StartsWith("*"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                    }
-                    else if (msg.StartsWith("System:"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                    }
-                    else if (msg.StartsWith("[SERVER") || msg.StartsWith("Available commands"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                    }
-                    else if (msg.StartsWith("[GAMBLING]"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                    }
-
-                    Console.WriteLine(msg);
-                    Console.ResetColor();
-                }
-
-                // Clear the input area
-                Console.SetCursorPosition(0, inputLinePosition);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-                Console.SetCursorPosition(0, inputLinePosition + 1);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-                Console.SetCursorPosition(0, inputLinePosition + 2);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-
-                // Restore input line prompt and text
-                Console.SetCursorPosition(0, inputLinePosition);
-                Console.Write("> ");
-                Console.Write(currentInput);
-
-                // Set cursor to the right place
-                Console.SetCursorPosition(2 + currentInput.Length, inputLinePosition);
-            }
-        }
-
-        private static void AddToMessageHistory(string message, ConsoleColor color = ConsoleColor.White)
-        {
-            lock (_messageHistory)
-            {
-                _messageHistory.Add(message);
-
-                // Also add to appropriate specialized list
-                if (message.StartsWith("[SHOUTBOX]"))
-                {
-                    _shoutboxMessages.Add(message);
-                    if (_shoutboxMessages.Count > _maxHistorySize)
-                    {
-                        _shoutboxMessages.RemoveAt(0);
-                    }
-                }
-                else
-                {
-                    _roomMessages.Add(message);
-                    if (_roomMessages.Count > _maxHistorySize)
-                    {
-                        _roomMessages.RemoveAt(0);
-                    }
-                }
-
-                if (_messageHistory.Count > _maxHistorySize * 2)
-                {
-                    _messageHistory.RemoveAt(0);
-                }
-            }
-        }
-
-        private static async Task ProcessUserInput(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                return;
-
-            // Handle client-side commands
-            if (input.StartsWith("/"))
-            {
-                string[] parts = input.Split(new[] { ' ' }, 2);
-                string command = parts[0].ToLower();
-                string args = parts.Length > 1 ? parts[1] : "";
-
-                switch (command)
-                {
-                    case "/exit":
-                    case "/quit":
-                        await SendMessageAsync("QUIT");
-                        _connected = false;
-                        break;
-
-                    case "/whisper":
-                    case "/w":
-                        if (string.IsNullOrWhiteSpace(args) || !args.Contains(" "))
-                        {
-                            AddToMessageHistory("System: Usage: /whisper username message", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            string[] whisperParts = args.Split(new[] { ' ' }, 2);
-                            string target = whisperParts[0];
-                            string message = whisperParts[1];
-                            await SendMessageAsync($"WHISPER {target} {message}");
-                        }
-                        break;
-
-                    case "/users":
-                        await SendMessageAsync("USERS");
-                        break;
-
-                    case "/help":
-                        await SendMessageAsync("HELP");
-                        break;
-
-                    case "/rooms":
-                        await SendMessageAsync("ROOMS");
-                        break;
-
-                    case "/join":
-                        if (string.IsNullOrWhiteSpace(args))
-                        {
-                            AddToMessageHistory("System: Usage: /join roomName", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"JOIN {args}");
-                        }
-                        break;
-
-                    case "/leave":
-                        await SendMessageAsync("LEAVE");
-                        break;
-
-                    case "/create":
-                    case "/createroom":
-                        if (string.IsNullOrWhiteSpace(args))
-                        {
-                            AddToMessageHistory("System: Usage: /create roomName [description]", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"CREATEROOM {args}");
-                        }
-                        break;
-
-                    case "/balance":
-                        await SendMessageAsync("BALANCE");
-                        break;
-
-                    case "/transfer":
-                        if (string.IsNullOrWhiteSpace(args) || !args.Contains(" "))
-                        {
-                            AddToMessageHistory("System: Usage: /transfer username amount [description]", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"TRANSFER {args}");
-                        }
-                        break;
-
-                    case "/shout":
-                        if (string.IsNullOrWhiteSpace(args))
-                        {
-                            AddToMessageHistory("System: Usage: /shout message", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"SHOUT {args}");
-                        }
-                        break;
-
-                    case "/shoutbox":
-                        await SendMessageAsync("SHOUTBOX");
-                        DisplayShoutbox();
-                        break;
-
-                    case "/roomchat":
-                        DisplayRoomChat();
-                        break;
-
-                    case "/transactions":
-                        await SendMessageAsync("TRANSACTIONS");
-                        break;
-
-                    // Gambling commands
-                    case "/gamble":
-                        if (string.IsNullOrWhiteSpace(args) || !args.Contains(" "))
-                        {
-                            AddToMessageHistory("System: Usage: /gamble amount - Places a bet in the active pot", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"GAMBLE bet {args}");
-                        }
-                        break;
-
-                    case "/pots":
-                        await SendMessageAsync("POTS");
-                        break;
-
-                    case "/potinfo":
-                        if (string.IsNullOrWhiteSpace(args))
-                        {
-                            AddToMessageHistory("System: Usage: /potinfo potId - Get details about a specific pot", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"POTINFO {args}");
-                        }
-                        break;
-
-                    case "/gambling":
-                    case "/gamblinghistory":
-                        await SendMessageAsync("GAMBLINGHISTORY");
-                        break;
-
-                    case "/gambling-view":
-                        DisplayGamblingView();
-                        break;
-
-                    // Casino games
-                    case "/dice":
-                        if (string.IsNullOrWhiteSpace(args))
-                        {
-                            AddToMessageHistory("System: Usage: /dice amount [target] - Roll dice with optional target", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"DICE {args}");
-                        }
-                        break;
-
-                    case "/flip":
-                        if (string.IsNullOrWhiteSpace(args) || !args.Contains(" "))
-                        {
-                            AddToMessageHistory("System: Usage: /flip amount choice - Flip a coin (HEADS or TAILS)", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"FLIP {args}");
-                        }
-                        break;
-
-                    case "/slots":
-                        if (string.IsNullOrWhiteSpace(args))
-                        {
-                            AddToMessageHistory("System: Usage: /slots amount - Play the slot machine", ConsoleColor.Red);
-                            RefreshDisplay();
-                        }
-                        else
-                        {
-                            await SendMessageAsync($"SLOTS {args}");
-                        }
-                        break;
-
-                    case "/stats":
-                        await SendMessageAsync("STATS");
-                        break;
-
-                    case "/leaderboard":
-                        await SendMessageAsync("LEADERBOARD");
-                        break;
-
-                    case "/web":
-                        // Switch to web interface
-                        await RunWebInterfaceAsync();
-                        break;
-
-                    default:
-                        AddToMessageHistory($"System: Unknown command: {command}. Type /help for available commands.", ConsoleColor.Red);
-                        RefreshDisplay();
-                        break;
-                }
-            }
-            else
-            {
-                // Regular chat message
-                await SendMessageAsync(input);
-            }
-        }
-
-        private static async Task ConnectToServerAsync()
-        {
-            Console.WriteLine($"Connecting to server at {_serverHost}:{Port}...");
-
-            try
-            {
-                _client = new TcpClient();
-                await _client.ConnectAsync(_serverHost, Port);
-                _stream = _client.GetStream();
-                _connected = true;
-
-                Console.WriteLine("Connected to server successfully!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Connection failed: {ex.Message}");
-                throw;
-            }
-        }
-
-        private static async Task SendMessageAsync(string message)
-        {
-            if (!_connected)
-            {
-                Console.WriteLine("Not connected to server.");
-                return;
-            }
-
-            try
-            {
-                byte[] data = Encoding.UTF8.GetBytes(message);
-                await _stream.WriteAsync(data, 0, data.Length);
-
-                // Special handling for some commands
-                if (message.StartsWith("JOIN "))
-                {
-                    string roomName = message.Substring(5);
-                    _currentRoom = roomName;
-                    RefreshDisplay();
-                }
-                else if (message == "LEAVE")
-                {
-                    _currentRoom = "lobby";
-                    RefreshDisplay();
-                }
-            }
-            catch (Exception ex)
-            {
-                lock (_consoleLock)
-                {
-                    Console.WriteLine($"Error sending message: {ex.Message}");
-                }
-                _connected = false;
-            }
-        }
-
-        private static async Task ReceiveMessagesAsync(CancellationToken cancellationToken)
-        {
-            byte[] buffer = new byte[4096];
-
-            try
-            {
-                while (_connected && !cancellationToken.IsCancellationRequested)
-                {
-                    // Check if data is available to read
-                    if (_client.Available > 0 || _stream.DataAvailable)
-                    {
-                        int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
-                        if (bytesRead > 0)
-                        {
-                            string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
-                            // Split multiple messages if needed
-                            string[] messages = message.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-
-                            foreach (string msg in messages)
-                            {
-                                // Handle authentication response
-                                if (_state == ClientState.Authentication && msg.Contains("Authentication successful"))
-                                {
-                                    _state = ClientState.Connected;
-                                    InitializeInterface();
-                                }
-
-                                // Extract room name if changed
-                                if (msg.StartsWith("You have joined room:"))
-                                {
-                                    string[] roomParts = msg.Split(':');
-                                    if (roomParts.Length > 1)
-                                    {
-                                        _currentRoom = roomParts[1].Trim();
-                                    }
-                                }
-
-                                // Extract credit balance if provided
-                                if (msg.StartsWith("Your current credit balance:"))
-                                {
-                                    string[] balanceParts = msg.Split(':');
-                                    if (balanceParts.Length > 1)
-                                    {
-                                        string balanceText = balanceParts[1].Trim();
-                                        balanceText = balanceText.Replace("credits", "").Trim();
-                                        if (decimal.TryParse(balanceText, out decimal balance))
-                                        {
-                                            _credits = balance;
-                                        }
-                                    }
-                                }
-
-                                // Handle responses based on state
-                                if (_state == ClientState.Connected)
-                                {
-                                    AddToMessageHistory(msg);
-                                    RefreshDisplay();
-                                }
-                                else
-                                {
-                                    lock (_consoleLock)
-                                    {
-                                        Console.WriteLine(msg);
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // Server closed the connection
-                            _connected = false;
-                            lock (_consoleLock)
-                            {
-                                Console.WriteLine("Server disconnected.");
-                            }
-                            break;
-                        }
-                    }
-
-                    // Small delay to prevent high CPU usage
-                    await Task.Delay(100, cancellationToken);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Normal cancellation, no need to report
-            }
-            catch (Exception ex)
-            {
-                lock (_consoleLock)
-                {
-                    Console.WriteLine($"Error receiving messages: {ex.Message}");
-                }
-                _connected = false;
-            }
-        }
-
-        private static void CloseConnection()
-        {
-            _connected = false;
-
-            if (_stream != null)
-            {
-                _stream.Close();
-                _stream = null;
-            }
-
-            if (_client != null)
-            {
-                _client.Close();
-                _client = null;
-            }
-        }
-
-        private static readonly List<string> _gamblingMessages = new List<string>();
-
-        private static void DisplayGamblingView()
-        {
-            lock (_consoleLock)
-            {
-                // Save the current input
-                int inputLinePosition = Console.WindowHeight - 4;
-                string currentInput = "";
-
-                if (Console.CursorTop >= inputLinePosition && Console.CursorLeft >= 2)
-                {
-                    // Save the exact cursor position within the input
-                    int inputCursorPosition = Console.CursorLeft - 2;
-
-                    // Get current input text
-                    Console.SetCursorPosition(2, inputLinePosition);
-
-                    // Read the current input
-                    StringBuilder input = new StringBuilder();
-                    int maxWidth = Console.WindowWidth - 3;
-
-                    // Create a temporary buffer
-                    char[] buffer = new char[maxWidth];
-                    for (int i = 0; i < maxWidth; i++)
-                    {
-                        if (Console.CursorLeft < Console.WindowWidth - 1)
-                        {
-                            try
-                            {
-                                char c = ' ';
-                                Console.CursorLeft++;
-                                buffer[i] = c;
-                            }
-                            catch
-                            {
-                                buffer[i] = ' ';
-                            }
-                        }
-                        else
-                        {
-                            buffer[i] = ' ';
-                        }
-                    }
-
-                    currentInput = new string(buffer).TrimEnd();
-                }
-
-                // Update tabs
-                Console.SetCursorPosition(0, 7);
-                Console.Write("[ Room Chat ]");
-                Console.Write(" | ");
-                Console.Write("[ Shoutbox ]");
-                Console.Write(" | ");
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write("[ Gambling ]");
-                Console.ResetColor();
-                Console.WriteLine();
-                Console.WriteLine(new string('─', Console.WindowWidth - 1));
-
-                // Position cursor at the start of the message area
-                Console.SetCursorPosition(0, 9);
-
-                // Clear message area
-                for (int i = 9; i < inputLinePosition - 1; i++)
-                {
-                    Console.SetCursorPosition(0, i);
-                    Console.Write(new string(' ', Console.WindowWidth - 1));
-                }
-
-                // Display messages
-                Console.SetCursorPosition(0, 9);
-
-                // Extract gambling-related messages from all messages
-                var gamblingMessages = _messageHistory
-                    .Where(msg =>
-                        msg.StartsWith("[GAMBLING]") ||
-                        msg.Contains("gambling") ||
-                        msg.Contains("Gambling") ||
-                        msg.Contains("bet") ||
-                        msg.Contains("pot") ||
-                        msg.Contains("Pot") ||
-                        msg.Contains("Bet"))
-                    .ToList();
-
-                // Show help information at the top
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine("== Gambling Commands ==");
-                Console.WriteLine("/gamble amount - Place a bet in the active pot");
-                Console.WriteLine("/pots - List all active gambling pots");
-                Console.WriteLine("/potinfo ID - Get detailed information about a specific pot");
-                Console.WriteLine("/gambling - View gambling history");
-                Console.WriteLine();
-                Console.ResetColor();
-
-                // Calculate how many messages we can display
-                int maxMessagesToShow = inputLinePosition - 15;
-
-                // Display gambling messages
-                int startIdx = Math.Max(0, gamblingMessages.Count - maxMessagesToShow);
-                for (int i = startIdx; i < gamblingMessages.Count; i++)
-                {
-                    string msg = gamblingMessages[i];
-
-                    if (msg.StartsWith("[GAMBLING]"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                    }
-                    else if (msg.Contains("win") || msg.Contains("Win") || msg.Contains("won") || msg.Contains("Won"))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                    }
-                    else
-                    {
-                        Console.ForegroundColor = ConsoleColor.White;
-                    }
-
-                    Console.WriteLine(msg);
-                    Console.ResetColor();
-                }
-
-                // Clear the input area
-                Console.SetCursorPosition(0, inputLinePosition);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-                Console.SetCursorPosition(0, inputLinePosition + 1);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-                Console.SetCursorPosition(0, inputLinePosition + 2);
-                Console.Write(new string(' ', Console.WindowWidth - 1));
-
-                // Restore input line prompt and text
-                Console.SetCursorPosition(0, inputLinePosition);
-                Console.Write("> ");
-                Console.Write(currentInput);
-
-                // Set cursor to the right place
-                Console.SetCursorPosition(2 + currentInput.Length, inputLinePosition);
-            }
-        }
-
-        #endregion
-    }
-}
+</html>

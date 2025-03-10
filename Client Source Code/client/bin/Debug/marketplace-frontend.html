@@ -1,0 +1,3282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Pubstop</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --primary-dark: #5b4bc9;
+            --secondary: #00b894;
+            --secondary-dark: #00a885;
+            --accent: #fdcb6e;
+            --accent-dark: #f7b731;
+            --danger: #d63031;
+            --danger-dark: #c0392b;
+            --warning: #e17055;
+            --dark: #2d3436;
+            --dark-light: #636e72;
+            --light: #dfe6e9;
+            --light-dark: #b2bec3;
+            --black: #1e272e;
+            --white: #ffffff;
+            --success: #00b894;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f7f9fc;
+            color: var(--dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Main Layout */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            grid-template-rows: 70px 1fr;
+            grid-template-areas:
+                "sidebar header"
+                "sidebar main";
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            grid-area: header;
+            background-color: var(--white);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            position: relative;
+            z-index: 10;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-balance {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--dark-light);
+            font-size: 13px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            grid-area: sidebar;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--white);
+            padding: 20px 0;
+            transition: var(--transition);
+            z-index: 100;
+        }
+
+        .logo {
+            padding: 0 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .logo i {
+            font-size: 28px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-item {
+            padding: 0;
+            margin-bottom: 5px;
+            position: relative;
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background-color: var(--accent);
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            text-decoration: none;
+            color: var(--white);
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-link i {
+            width: 20px;
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: rgba(255, 255, 255, 0.1);
+            margin: 20px 0;
+        }
+
+        /* Main Content */
+        .main {
+            grid-area: main;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards and Common Elements */
+        .section-title {
+            margin-bottom: 20px;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: var(--primary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: var(--white);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--secondary-dark);
+        }
+
+        .btn-accent {
+            background-color: var(--accent);
+            color: var(--dark);
+        }
+
+        .btn-accent:hover {
+            background-color: var(--accent-dark);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: var(--white);
+        }
+
+        .btn-danger:hover {
+            background-color: var(--danger-dark);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 15px;
+            font-size: 14px;
+            border: 1px solid var(--light-dark);
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+        }
+
+        /* Marketplace & Inventory */
+        .marketplace-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .search-container {
+            position: relative;
+            width: 300px;
+        }
+
+        .search-container i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--dark-light);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border-radius: 20px;
+            border: 1px solid var(--light-dark);
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .filter-options {
+            display: flex;
+            gap: 10px;
+        }
+
+        .item-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .item-img {
+            height: 160px;
+            background-color: var(--light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .item-img i {
+            font-size: 60px;
+            color: var(--primary);
+        }
+
+        .item-details {
+            padding: 15px;
+        }
+
+        .item-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .item-description {
+            color: var(--dark-light);
+            font-size: 14px;
+            margin-bottom: 8px;
+            height: 40px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .item-price {
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .item-actions {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .quantity-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--primary);
+            color: var(--white);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        /* Chat System */
+        .chat-container {
+            height: calc(100vh - 150px);
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            background-color: var(--white);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 15px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header .online-count {
+            font-size: 14px;
+            background-color: rgba(255,255,255,0.2);
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            animation: fadeInUp 0.3s;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: var(--light);
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            background-color: var(--light);
+            padding: 10px 15px;
+            border-radius: 0 var(--border-radius) var(--border-radius) var(--border-radius);
+            max-width: 70%;
+        }
+
+        .message.own {
+            flex-direction: row-reverse;
+        }
+
+        .message.own .message-avatar {
+            margin-right: 0;
+            margin-left: 10px;
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        .message.own .message-content {
+            background-color: var(--primary);
+            color: var(--white);
+            border-radius: var(--border-radius) 0 var(--border-radius) var(--border-radius);
+        }
+
+        .message-user {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .message-text {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: var(--dark-light);
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid var(--light);
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid var(--light-dark);
+            border-radius: var(--border-radius) 0 0 var(--border-radius);
+            font-size: 14px;
+        }
+
+        .chat-input input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .chat-input button {
+            background-color: var(--primary);
+            color: var(--white);
+            border: none;
+            padding: 0 20px;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .chat-input button:hover {
+            background-color: var(--primary-dark);
+        }
+
+        /* Blackjack Game */
+        .game-container {
+            background: #1a5e2d;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            box-shadow: var(--box-shadow);
+            color: var(--white);
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .game-title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .game-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 20px;
+            background-color: rgba(0,0,0,0.3);
+        }
+
+        .game-table {
+            margin-bottom: 20px;
+        }
+
+        .player-area, .dealer-area {
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            background-color: rgba(0,0,0,0.1);
+        }
+
+        .area-label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .area-label .score {
+            background-color: rgba(0,0,0,0.3);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .cards-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .card-item {
+            width: 100px;
+            height: 140px;
+            background-color: var(--white);
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 8px;
+            color: black;
+            font-weight: 700;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card-item.red {
+            color: red;
+        }
+
+        .card-value {
+            font-size: 20px;
+        }
+
+        .card-suit {
+            font-size: 30px;
+            align-self: center;
+        }
+
+        .card-value-bottom {
+            font-size: 20px;
+            align-self: flex-end;
+            transform: rotate(180deg);
+        }
+
+        .card-item.face-down {
+            background-image: linear-gradient(45deg, #1a5e2d 25%, transparent 25%, transparent 50%, #1a5e2d 50%, #1a5e2d 75%, transparent 75%, transparent);
+            background-size: 8px 8px;
+            background-color: var(--white);
+        }
+
+        .card-item.face-down .card-value,
+        .card-item.face-down .card-suit,
+        .card-item.face-down .card-value-bottom {
+            display: none;
+        }
+
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .bet-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .bet-amount {
+            font-size: 18px;
+            font-weight: 700;
+            padding: 5px 15px;
+            background-color: rgba(0,0,0,0.3);
+            border-radius: 20px;
+        }
+
+        .bet-input {
+            width: 100px;
+            text-align: center;
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+
+        /* Baccarat Game */
+        .baccarat-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .baccarat-side {
+            padding: 20px;
+            border-radius: var(--border-radius);
+            background-color: rgba(0,0,0,0.1);
+        }
+
+        .side-label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .betting-options {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .bet-option {
+            padding: 8px 16px;
+            background-color: rgba(0,0,0,0.3);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .bet-option:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .bet-option.selected {
+            background-color: var(--accent);
+            color: var(--dark);
+        }
+
+        /* Authentication Section */
+        .auth-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .ticker-container {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            overflow: hidden;
+            height: 40px;
+            background-color: rgba(0, 0, 0, 0.2);
+            color: var(--white);
+        }
+
+        .ticker {
+            display: flex;
+            position: absolute;
+            white-space: nowrap;
+            animation: ticker 30s linear infinite;
+        }
+
+        .ticker-item {
+            padding: 10px 20px;
+            font-weight: 500;
+        }
+
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        .auth-box {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .auth-header {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .auth-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .auth-header p {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .auth-tabs {
+            display: flex;
+        }
+
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            background-color: var(--light);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .auth-tab.active {
+            background-color: var(--white);
+            font-weight: 600;
+        }
+
+        .auth-content {
+            padding: 20px;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .form-footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--dark-light);
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            max-width: 300px;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification-icon {
+            margin-right: 15px;
+            width: 24px;
+            height: 24px;
+            background-color: var(--success);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .notification-icon.error {
+            background-color: var(--danger);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .notification-message {
+            font-size: 13px;
+            color: var(--dark-light);
+        }
+
+        .notification-close {
+            color: var(--dark-light);
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 16px;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }
+
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            width: 90%;
+            max-width: 500px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--dark-light);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid var(--light);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* Add Item Form */
+        .add-item-form {
+            margin-bottom: 30px;
+        }
+
+        /* Trade Confirmation */
+        .trade-details {
+            margin-bottom: 20px;
+        }
+
+        .trade-item {
+            background-color: var(--light);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+        }
+
+        .trade-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .trade-item-title {
+            font-weight: 600;
+        }
+
+        .trade-item-quantity {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        .trade-party {
+            margin-bottom: 20px;
+        }
+
+        .trade-party-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--dark-light);
+        }
+
+        /* Utils */
+        .hidden {
+            display: none !important;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 992px) {
+            .app-layout {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "header"
+                    "main";
+            }
+
+            .sidebar {
+                position: fixed;
+                left: -250px;
+                top: 0;
+                height: 100%;
+                z-index: 1000;
+            }
+
+            .sidebar.show {
+                left: 0;
+            }
+
+            .mobile-menu-btn {
+                display: block !important;
+            }
+
+            .card-item {
+                width: 80px;
+                height: 120px;
+            }
+
+            .card-value {
+                font-size: 16px;
+            }
+
+            .card-suit {
+                font-size: 24px;
+            }
+
+            .card-value-bottom {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .baccarat-table {
+                grid-template-columns: 1fr;
+            }
+
+            .game-controls {
+                flex-wrap: wrap;
+            }
+
+            .bet-controls {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .header {
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: center;
+                padding: 10px;
+            }
+
+            .actions {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .auth-box {
+                width: 90%;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .marketplace-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .search-container {
+                width: 100%;
+            }
+
+            .filter-options {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Section -->
+    <div id="auth-section" class="auth-container">
+        <div class="ticker-container">
+            <div class="ticker">
+                <div class="ticker-item">💰 Current jackpot: 25,000 credits! 💰</div>
+                <div class="ticker-item">🎲 Player DragonSlayer just won 1,500 credits at Blackjack! 🎲</div>
+                <div class="ticker-item">⚔️ Rare "Excalibur Sword" just listed on marketplace for 3,000 credits! ⚔️</div>
+                <div class="ticker-item">🤝 Trading activity up 25% today! 🤝</div>
+                <div class="ticker-item">🏆 Weekly tournament starts in 2 hours - 10,000 credit prize pool! 🏆</div>
+                <div class="ticker-item">💎 New user Jewel22 just joined with a 500 credit bonus! 💎</div>
+                <div class="ticker-item">🎮 Over 100 users online and playing now! 🎮</div>
+                <div class="ticker-item">🔥 Hot streak! User GoldenArcher won 5 games in a row! 🔥</div>
+                <div class="ticker-item">📈 "Magic Amulet" value increased by 15% this week! 📈</div>
+                <div class="ticker-item">🎯 Register now and get 500 free credits to start playing! 🎯</div>
+            </div>
+        </div>
+        
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1><i class="fas fa-dice"></i>Pub Stop</h1>
+                <p>Enter the ultimate trading and gaming platform!</p>
+            </div>
+            <div class="auth-tabs">
+                <div id="login-tab" class="auth-tab active">Login</div>
+                <div id="register-tab" class="auth-tab">Register</div>
+            </div>
+            <div class="auth-content">
+                <form id="login-form" class="auth-form active">
+                    <div class="form-group">
+                        <label for="login-username">Username</label>
+                        <input type="text" id="login-username" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                    <div class="form-footer">
+                        Don't have an account? <a href="#" id="show-register">Register now</a>
+                    </div>
+                </form>
+                <form id="register-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="register-username">Username</label>
+                        <input type="text" id="register-username" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm">Confirm Password</label>
+                        <input type="password" id="register-confirm" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
+                    <div class="form-footer">
+                        Already have an account? <a href="#" id="show-login">Login now</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app-section" class="app-layout hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar">
+            <div class="logo">
+                <i class="fas fa-dice"></i>
+                <span>Fantasy Casino</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active">
+                    <a href="#" class="nav-link" data-section="marketplace">
+                        <i class="fas fa-store"></i>
+                        <span>Marketplace</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="inventory">
+                        <i class="fas fa-box-open"></i>
+                        <span>My Inventory</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="trade">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span>Trade</span>
+                    </a>
+                </li>
+                <div class="divider"></div>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="blackjack">
+                        <i class="fas fa-playing-cards"></i>
+                        <span>Blackjack</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="baccarat">
+                        <i class="fas fa-coins"></i>
+                        <span>Baccarat</span>
+                    </a>
+                </li>
+                <div class="divider"></div>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="chat">
+                        <i class="fas fa-comments"></i>
+                        <span>Live Chat</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <button id="mobile-menu-btn" class="mobile-menu-btn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">J</div>
+                <div class="user-details">
+                    <div class="user-name" id="username">Not logged in</div>
+                    <div class="user-balance">
+                        <i class="fas fa-coins"></i>
+                        <span id="user-credits">0</span> credits
+                    </div>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="logout-btn" class="btn btn-danger btn-sm">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Marketplace Section -->
+            <section id="marketplace-section" class="content-section active">
+                <h2 class="section-title">Marketplace</h2>
+                
+                <div class="card add-item-form">
+                    <div class="card-title">
+                        <i class="fas fa-plus-circle"></i>
+                        List a New Item
+                    </div>
+                    <form id="add-item-form">
+                        <div class="form-group">
+                            <label for="item-name">Item Name</label>
+                            <input type="text" id="item-name" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="item-description">Item Description</label>
+                            <textarea id="item-description" class="form-control" rows="3" required></textarea>
+                        </div>
+                        <div class="form-row" style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="item-price">Price (credits)</label>
+                                <input type="number" id="item-price" class="form-control" min="1" required>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label for="item-quantity">Quantity</label>
+                                <input type="number" id="item-quantity" class="form-control" min="1" value="1" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-tag"></i> List Item
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="marketplace-controls">
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="market-search" class="search-input" placeholder="Search items...">
+                    </div>
+                    <div class="filter-options">
+                        <button class="btn btn-outline btn-sm active" data-filter="all">All Items</button>
+                        <button class="btn btn-outline btn-sm" data-filter="lowest">Lowest Price</button>
+                        <button class="btn btn-outline btn-sm" data-filter="highest">Highest Price</button>
+                        <button class="btn btn-outline btn-sm" data-filter="newest">Newest</button>
+                    </div>
+                </div>
+                
+                <div class="grid" id="marketplace-grid">
+                    <!-- Marketplace items will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Inventory Section -->
+            <section id="inventory-section" class="content-section">
+                <h2 class="section-title">My Inventory</h2>
+                
+                <div id="inventory-grid" class="grid">
+                    <!-- Inventory items will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Trade Section -->
+            <section id="trade-section" class="content-section">
+                <h2 class="section-title">Trade with Other Users</h2>
+                
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-exchange-alt"></i>
+                        New Trade
+                    </div>
+                    <div class="form-group">
+                        <label for="trade-username">User to trade with:</label>
+                        <input type="text" id="trade-username" class="form-control" placeholder="Enter username" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <p style="margin-bottom: 10px;">Select items from your inventory to trade:</p>
+                        <div id="trade-inventory-grid" class="grid">
+                            <!-- Inventory items for trading will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <button id="propose-trade-btn" class="btn btn-primary">
+                        <i class="fas fa-handshake"></i> Propose Trade
+                    </button>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-history"></i>
+                        Trade History
+                    </div>
+                    <div id="trade-history-list">
+                        <!-- Trade history items will be populated here -->
+                        <p>No recent trades.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Blackjack Game Section -->
+            <section id="blackjack-section" class="content-section">
+                <h2 class="section-title">Blackjack</h2>
+                
+                <div class="game-container">
+                    <div class="game-title">Blackjack</div>
+                    <div class="game-status" id="blackjack-status">Place your bet to start</div>
+                    
+                    <div class="bet-controls" id="blackjack-bet-controls">
+                        <button class="btn btn-sm btn-danger" id="decrease-bet">-</button>
+                        <div class="bet-amount">Bet: <span id="bet-value">50</span></div>
+                        <button class="btn btn-sm btn-success" id="increase-bet">+</button>
+                        <button class="btn btn-accent" id="place-bet">Place Bet</button>
+                    </div>
+                    
+                    <div class="game-table" id="blackjack-table">
+                        <div class="dealer-area">
+                            <div class="area-label">
+                                Dealer <span class="score" id="dealer-score">0</span>
+                            </div>
+                            <div class="cards-container" id="dealer-cards">
+                                <!-- Dealer cards will be placed here -->
+                            </div>
+                        </div>
+                        
+                        <div class="player-area">
+                            <div class="area-label">
+                                Your Hand <span class="score" id="player-score">0</span>
+                            </div>
+                            <div class="cards-container" id="player-cards">
+                                <!-- Player cards will be placed here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="game-controls" id="blackjack-controls">
+                        <button class="btn btn-primary" id="hit-button" disabled>Hit</button>
+                        <button class="btn btn-primary" id="stand-button" disabled>Stand</button>
+                        <button class="btn btn-secondary" id="double-button" disabled>Double Down</button>
+                        <button class="btn btn-danger" id="new-hand-button" disabled>New Hand</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Baccarat Game Section -->
+            <section id="baccarat-section" class="content-section">
+                <h2 class="section-title">Baccarat</h2>
+                
+                <div class="game-container">
+                    <div class="game-title">Baccarat</div>
+                    <div class="game-status" id="baccarat-status">Place your bet to start</div>
+                    
+                    <div class="betting-options" id="baccarat-betting">
+                        <div class="bet-option" data-bet="player">Player</div>
+                        <div class="bet-option" data-bet="banker">Banker</div>
+                        <div class="bet-option" data-bet="tie">Tie</div>
+                    </div>
+                    
+                    <div class="bet-controls" id="baccarat-bet-controls">
+                        <button class="btn btn-sm btn-danger" id="baccarat-decrease-bet">-</button>
+                        <div class="bet-amount">Bet: <span id="baccarat-bet-value">50</span></div>
+                        <button class="btn btn-sm btn-success" id="baccarat-increase-bet">+</button>
+                        <button class="btn btn-accent" id="baccarat-place-bet">Place Bet</button>
+                    </div>
+                    
+                    <div class="baccarat-table" id="baccarat-table">
+                        <div class="baccarat-side">
+                            <div class="side-label">
+                                Player <span class="score" id="baccarat-player-score">0</span>
+                            </div>
+                            <div class="cards-container" id="baccarat-player-cards">
+                                <!-- Player cards will be placed here -->
+                            </div>
+                        </div>
+                        
+                        <div class="baccarat-side">
+                            <div class="side-label">
+                                Banker <span class="score" id="baccarat-banker-score">0</span>
+                            </div>
+                            <div class="cards-container" id="baccarat-banker-cards">
+                                <!-- Banker cards will be placed here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="game-controls">
+                        <button class="btn btn-primary" id="baccarat-deal-button" disabled>Deal</button>
+                        <button class="btn btn-danger" id="baccarat-new-hand-button" disabled>New Hand</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chat Section -->
+            <section id="chat-section" class="content-section">
+                <h2 class="section-title">Live Chat</h2>
+                
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <span>Public Chat Room</span>
+                        <span class="online-count" id="online-count">14 online</span>
+                    </div>
+                    <div class="chat-messages" id="chat-messages">
+                        <!-- Chat messages will be loaded here -->
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="chat-input-field" placeholder="Type your message...">
+                        <button id="chat-send-button">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Trade Confirmation Modal -->
+    <div id="trade-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Confirm Trade</div>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="trade-details">
+                    <div class="trade-party">
+                        <div class="trade-party-title">You are offering:</div>
+                        <div id="trade-offering" class="trade-items">
+                            <!-- Offering items will be displayed here -->
+                        </div>
+                    </div>
+                    
+                    <div class="trade-party">
+                        <div class="trade-party-title">You are trading with:</div>
+                        <div id="trade-partner" style="font-weight: 600;">Username</div>
+                    </div>
+                    
+                    <div style="background-color: #FFF9C4; padding: 15px; border-radius: var(--border-radius); margin-top: 20px;">
+                        <p style="margin: 0; font-size: 14px;">
+                            <i class="fas fa-exclamation-triangle" style="color: #F57F17; margin-right: 5px;"></i>
+                            Please verify all details before confirming. All trades are final.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-trade-btn" class="btn btn-danger">Cancel</button>
+                <button id="confirm-trade-btn" class="btn btn-success">Confirm Trade</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Buy Item Modal -->
+    <div id="buy-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Confirm Purchase</div>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to buy <span id="buy-item-name" style="font-weight: 600;"></span>?</p>
+                <p style="margin-top: 10px;">Price: <span id="buy-item-price" style="font-weight: 600; color: var(--primary);"></span> credits</p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-buy-btn" class="btn btn-danger">Cancel</button>
+                <button id="confirm-buy-btn" class="btn btn-success">Confirm Purchase</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <div id="notification-icon" class="notification-icon">
+            <i class="fas fa-check"></i>
+        </div>
+        <div class="notification-content">
+            <div id="notification-title" class="notification-title">Success</div>
+            <div id="notification-message" class="notification-message">Operation completed successfully.</div>
+        </div>
+        <button id="notification-close" class="notification-close">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Global Variables
+        let currentUser = null;
+        let currentToken = null;
+        let currentSection = 'marketplace';
+        let customItems = {};
+        let inventoryItems = [];
+        let selectedTradeItems = [];
+        let chatMessagesArray = [];
+        let onlineUsers = 14;
+        
+        // Game variables
+        let blackjackGame = {
+            player: { cards: [], score: 0 },
+            dealer: { cards: [], score: 0 },
+            bet: 50,
+            isPlaying: false,
+            playerTurn: false
+        };
+        
+        let baccaratGame = {
+            player: { cards: [], score: 0 },
+            banker: { cards: [], score: 0 },
+            bet: 50,
+            betOn: null,
+            isPlaying: false
+        };
+
+        // DOM Elements - Auth
+        const authSection = document.getElementById('auth-section');
+        const appSection = document.getElementById('app-section');
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const showRegisterLink = document.getElementById('show-register');
+        const showLoginLink = document.getElementById('show-login');
+        
+        // DOM Elements - Main UI
+        const sidebarLinks = document.querySelectorAll('.nav-link');
+        const contentSections = document.querySelectorAll('.content-section');
+        const usernameElement = document.getElementById('username');
+        const userCreditsElement = document.getElementById('user-credits');
+        const userAvatarElement = document.getElementById('user-avatar');
+        const logoutBtn = document.getElementById('logout-btn');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        
+        // DOM Elements - Marketplace & Inventory
+        const marketplaceGrid = document.getElementById('marketplace-grid');
+        const inventoryGrid = document.getElementById('inventory-grid');
+        const addItemForm = document.getElementById('add-item-form');
+        const marketSearchInput = document.getElementById('market-search');
+        const filterButtons = document.querySelectorAll('.filter-options .btn');
+        
+        // DOM Elements - Trade
+        const tradeInventoryGrid = document.getElementById('trade-inventory-grid');
+        const tradeUsernameInput = document.getElementById('trade-username');
+        const proposeTradeBtn = document.getElementById('propose-trade-btn');
+        const tradeModal = document.getElementById('trade-modal');
+        const tradeOffering = document.getElementById('trade-offering');
+        const tradePartner = document.getElementById('trade-partner');
+        const confirmTradeBtn = document.getElementById('confirm-trade-btn');
+        const cancelTradeBtn = document.getElementById('cancel-trade-btn');
+        const tradeHistoryList = document.getElementById('trade-history-list');
+        
+        // DOM Elements - Buy Modal
+        const buyModal = document.getElementById('buy-modal');
+        const buyItemName = document.getElementById('buy-item-name');
+        const buyItemPrice = document.getElementById('buy-item-price');
+        const confirmBuyBtn = document.getElementById('confirm-buy-btn');
+        const cancelBuyBtn = document.getElementById('cancel-buy-btn');
+        
+        // DOM Elements - Chat
+        const chatMessagesContainer = document.getElementById('chat-messages');
+        const chatInputField = document.getElementById('chat-input-field');
+        const chatSendButton = document.getElementById('chat-send-button');
+        const onlineCountElement = document.getElementById('online-count');
+        
+        // DOM Elements - Notification
+        const notification = document.getElementById('notification');
+        const notificationIcon = document.getElementById('notification-icon');
+        const notificationTitle = document.getElementById('notification-title');
+        const notificationMessage = document.getElementById('notification-message');
+        const notificationClose = document.getElementById('notification-close');
+        
+        // DOM Elements - Blackjack
+        const blackjackBetControls = document.getElementById('blackjack-bet-controls');
+        const blackjackTable = document.getElementById('blackjack-table');
+        const blackjackControls = document.getElementById('blackjack-controls');
+        const dealerCards = document.getElementById('dealer-cards');
+        const playerCards = document.getElementById('player-cards');
+        const dealerScoreElement = document.getElementById('dealer-score');
+        const playerScoreElement = document.getElementById('player-score');
+        const blackjackStatusElement = document.getElementById('blackjack-status');
+        const betValueElement = document.getElementById('bet-value');
+        const decreaseBetBtn = document.getElementById('decrease-bet');
+        const increaseBetBtn = document.getElementById('increase-bet');
+        const placeBetBtn = document.getElementById('place-bet');
+        const hitButton = document.getElementById('hit-button');
+        const standButton = document.getElementById('stand-button');
+        const doubleButton = document.getElementById('double-button');
+        const newHandButton = document.getElementById('new-hand-button');
+        
+        // DOM Elements - Baccarat
+        const baccaratBettingOptions = document.querySelectorAll('.bet-option');
+        const baccaratBetValueElement = document.getElementById('baccarat-bet-value');
+        const baccaratDecreaseBetBtn = document.getElementById('baccarat-decrease-bet');
+        const baccaratIncreaseBetBtn = document.getElementById('baccarat-increase-bet');
+        const baccaratPlaceBetBtn = document.getElementById('baccarat-place-bet');
+        const baccaratPlayerCards = document.getElementById('baccarat-player-cards');
+        const baccaratBankerCards = document.getElementById('baccarat-banker-cards');
+        const baccaratPlayerScoreElement = document.getElementById('baccarat-player-score');
+        const baccaratBankerScoreElement = document.getElementById('baccarat-banker-score');
+        const baccaratStatusElement = document.getElementById('baccarat-status');
+        const baccaratDealButton = document.getElementById('baccarat-deal-button');
+        const baccaratNewHandButton = document.getElementById('baccarat-new-hand-button');
+
+        // Event Listeners - Auth
+        loginTab.addEventListener('click', function() {
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            loginForm.classList.add('active');
+            registerForm.classList.remove('active');
+        });
+        
+        registerTab.addEventListener('click', function() {
+            registerTab.classList.add('active');
+            loginTab.classList.remove('active');
+            registerForm.classList.add('active');
+            loginForm.classList.remove('active');
+        });
+        
+        showRegisterLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            registerTab.click();
+        });
+        
+        showLoginLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            loginTab.click();
+        });
+        
+        loginForm.addEventListener('submit', handleLogin);
+        registerForm.addEventListener('submit', handleRegister);
+        logoutBtn.addEventListener('click', handleLogout);
+        
+        // Event Listeners - Main UI
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const section = this.getAttribute('data-section');
+                showSection(section);
+            });
+        });
+        
+        mobileMenuBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('show');
+        });
+        
+        // Event Listeners - Marketplace & Inventory
+        addItemForm.addEventListener('submit', handleAddItem);
+        marketSearchInput.addEventListener('input', filterMarketplaceItems);
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                filterMarketplaceItems();
+            });
+        });
+        
+        // Event Listeners - Trade
+        proposeTradeBtn.addEventListener('click', openTradeModal);
+        confirmTradeBtn.addEventListener('click', confirmTrade);
+        cancelTradeBtn.addEventListener('click', closeTradeModal);
+        
+        // Event Listeners - Buy Modal
+        confirmBuyBtn.addEventListener('click', confirmBuy);
+        cancelBuyBtn.addEventListener('click', closeBuyModal);
+        document.querySelectorAll('.modal-close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', function() {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.classList.remove('show');
+                });
+            });
+        });
+        
+        // Event Listeners - Chat
+        chatSendButton.addEventListener('click', sendChatMessage);
+        chatInputField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+        
+        // Event Listeners - Notification
+        notificationClose.addEventListener('click', function() {
+            notification.classList.remove('show');
+        });
+        
+        // Event Listeners - Blackjack
+        decreaseBetBtn.addEventListener('click', function() {
+            if (blackjackGame.bet >= 20) {
+                blackjackGame.bet -= 10;
+                betValueElement.textContent = blackjackGame.bet;
+            }
+        });
+        
+        increaseBetBtn.addEventListener('click', function() {
+            blackjackGame.bet += 10;
+            betValueElement.textContent = blackjackGame.bet;
+        });
+        
+        placeBetBtn.addEventListener('click', startBlackjackGame);
+        hitButton.addEventListener('click', blackjackHit);
+        standButton.addEventListener('click', blackjackStand);
+        doubleButton.addEventListener('click', blackjackDoubleDown);
+        newHandButton.addEventListener('click', resetBlackjackGame);
+        
+        // Event Listeners - Baccarat
+        baccaratBettingOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                baccaratBettingOptions.forEach(opt => opt.classList.remove('selected'));
+                this.classList.add('selected');
+                baccaratGame.betOn = this.getAttribute('data-bet');
+            });
+        });
+        
+        baccaratDecreaseBetBtn.addEventListener('click', function() {
+            if (baccaratGame.bet >= 20) {
+                baccaratGame.bet -= 10;
+                baccaratBetValueElement.textContent = baccaratGame.bet;
+            }
+        });
+        
+        baccaratIncreaseBetBtn.addEventListener('click', function() {
+            baccaratGame.bet += 10;
+            baccaratBetValueElement.textContent = baccaratGame.bet;
+        });
+        
+        baccaratPlaceBetBtn.addEventListener('click', startBaccaratGame);
+        baccaratDealButton.addEventListener('click', dealBaccaratCards);
+        baccaratNewHandButton.addEventListener('click', resetBaccaratGame);
+
+        // Functions - Auth
+        async function handleRegister(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('register-username').value;
+            const password = document.getElementById('register-password').value;
+            const confirm = document.getElementById('register-confirm').value;
+            
+            if (password !== confirm) {
+                showNotification('Error', 'Passwords do not match!', true);
+                return;
+            }
+            
+            try {
+                const data = await apiRequest('/register', 'POST', { 
+                    Username: username, 
+                    Password: password 
+                });
+                
+                showNotification('Success', 'Registration successful! You can now login.', false);
+                document.getElementById('register-form').reset();
+                loginTab.click();
+                document.getElementById('login-username').value = username;
+            } catch (error) {
+                console.error('Registration error:', error);
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const data = await apiRequest('/login', 'POST', { 
+                    Username: username, 
+                    Password: password 
+                });
+                
+                currentToken = data.token;
+                
+                showNotification('Success', 'Login successful!', false);
+                await loadUserProfile();
+                
+                // Show the app section
+                authSection.classList.add('hidden');
+                appSection.classList.remove('hidden');
+                
+                // Initialize chat
+                initializeChat();
+                
+                // Initialize first section
+                showSection('marketplace');
+            } catch (error) {
+                console.error('Login error:', error);
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await apiRequest('/logout', 'POST', { Token: currentToken });
+                
+                currentToken = null;
+                currentUser = null;
+                
+                showNotification('Success', 'Logged out successfully!', false);
+                authSection.classList.remove('hidden');
+                appSection.classList.add('hidden');
+                
+                // Reset forms
+                document.getElementById('login-form').reset();
+                document.getElementById('register-form').reset();
+                
+                // Reset games
+                resetBlackjackGame();
+                resetBaccaratGame();
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        async function loadUserProfile() {
+            try {
+                currentUser = await apiRequest(`/profile?token=${currentToken}`, 'GET');
+                
+                usernameElement.textContent = currentUser.username;
+                userCreditsElement.textContent = currentUser.credits;
+                userAvatarElement.textContent = currentUser.username.charAt(0).toUpperCase();
+                
+                // Set up inventory items based on user's items
+                inventoryItems = [];
+                if (currentUser.items) {
+                    currentUser.items.forEach(item => {
+                        inventoryItems.push({
+                            name: item.name,
+                            quantity: item.quantity,
+                            description: 'Your ' + item.name
+                        });
+                    });
+                }
+                
+                // Render marketplace and inventory
+                renderMarketplace();
+                renderInventory();
+                renderTradeInventory();
+            } catch (error) {
+                console.error('Profile loading error:', error);
+                currentToken = null;
+            }
+        }
+
+        // Functions - UI
+        function showSection(section) {
+            // Update sidebar links
+            sidebarLinks.forEach(link => {
+                const linkSection = link.getAttribute('data-section');
+                if (linkSection === section) {
+                    link.parentElement.classList.add('active');
+                } else {
+                    link.parentElement.classList.remove('active');
+                }
+            });
+            
+            // Hide all sections
+            contentSections.forEach(s => {
+                s.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(`${section}-section`).classList.add('active');
+            currentSection = section;
+            
+            // Close mobile menu if open
+            sidebar.classList.remove('show');
+        }
+
+        function showNotification(title, message, isError = false) {
+            notificationTitle.textContent = title;
+            notificationMessage.textContent = message;
+            
+            if (isError) {
+                notificationIcon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+                notificationIcon.classList.add('error');
+            } else {
+                notificationIcon.innerHTML = '<i class="fas fa-check"></i>';
+                notificationIcon.classList.remove('error');
+            }
+            
+            notification.classList.add('show');
+            
+            // Auto hide after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Functions - API
+        async function apiRequest(url, method, body = null) {
+            try {
+                // Add the base server URL to all API requests
+                const baseUrl = "http://162.248.94.105:5000";
+                const fullUrl = baseUrl + url;
+                
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(fullUrl, options);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'API request failed');
+                }
+                
+                return data;
+            } catch (error) {
+                showNotification('Error', error.message, true);
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        // Functions - Marketplace & Inventory
+        function handleAddItem(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('item-name').value;
+            const description = document.getElementById('item-description').value;
+            const price = parseInt(document.getElementById('item-price').value);
+            const quantity = parseInt(document.getElementById('item-quantity').value);
+            
+            // Generate unique ID for item
+            const itemId = 'item_' + Date.now();
+            
+            // Add to custom items
+            customItems[itemId] = {
+                id: itemId,
+                name: name,
+                description: description,
+                price: price,
+                quantity: quantity,
+                seller: currentUser.username,
+                timestamp: Date.now()
+            };
+            
+            showNotification('Item Listed', `${name} has been listed on the marketplace!`, false);
+            
+            // Clear form
+            document.getElementById('add-item-form').reset();
+            
+            // Refresh marketplace
+            renderMarketplace();
+        }
+
+        function renderMarketplace() {
+            marketplaceGrid.innerHTML = '';
+            
+            // Combine preset items and custom items
+            const allItems = Object.values(customItems);
+            
+            if (allItems.length === 0) {
+                marketplaceGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 20px;">
+                        <p>No items are currently listed. Be the first to list an item!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Filter items based on search
+            const searchTerm = marketSearchInput.value.toLowerCase();
+            let filteredItems = allItems.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) || 
+                item.description.toLowerCase().includes(searchTerm)
+            );
+            
+            // Apply sorting
+            const activeFilter = document.querySelector('.filter-options .btn.active').getAttribute('data-filter');
+            switch (activeFilter) {
+                case 'lowest':
+                    filteredItems.sort((a, b) => a.price - b.price);
+                    break;
+                case 'highest':
+                    filteredItems.sort((a, b) => b.price - a.price);
+                    break;
+                case 'newest':
+                    filteredItems.sort((a, b) => b.timestamp - a.timestamp);
+                    break;
+                default:
+                    // Default sorting by newest
+                    filteredItems.sort((a, b) => b.timestamp - a.timestamp);
+            }
+            
+            // Create item cards
+            filteredItems.forEach(item => {
+                const itemCard = document.createElement('div');
+                itemCard.className = 'item-card';
+                
+                // Determine icon based on name
+                let icon = 'fa-box';
+                if (item.name.toLowerCase().includes('sword')) icon = 'fa-sword';
+                else if (item.name.toLowerCase().includes('axe')) icon = 'fa-axe';
+                else if (item.name.toLowerCase().includes('shield')) icon = 'fa-shield';
+                else if (item.name.toLowerCase().includes('helmet')) icon = 'fa-helmet';
+                else if (item.name.toLowerCase().includes('potion')) icon = 'fa-flask';
+                else if (item.name.toLowerCase().includes('bow')) icon = 'fa-bow-arrow';
+                else if (item.name.toLowerCase().includes('staff')) icon = 'fa-wand-magic';
+                else if (item.name.toLowerCase().includes('amulet')) icon = 'fa-gem';
+                
+                itemCard.innerHTML = `
+                    <div class="quantity-badge">${item.quantity}</div>
+                    <div class="item-img">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div class="item-details">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-description">${item.description}</div>
+                        <div class="item-price">${item.price} credits</div>
+                        <div class="item-actions">
+                            <small style="color: var(--dark-light);">Seller: ${item.seller}</small>
+                            <button class="btn btn-primary btn-sm buy-btn" data-id="${item.id}">
+                                <i class="fas fa-shopping-cart"></i> Buy
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                marketplaceGrid.appendChild(itemCard);
+                
+                // Add event listener to buy button
+                itemCard.querySelector('.buy-btn').addEventListener('click', function() {
+                    const itemId = this.getAttribute('data-id');
+                    openBuyModal(itemId);
+                });
+            });
+        }
+
+        function filterMarketplaceItems() {
+            renderMarketplace();
+        }
+
+        function renderInventory() {
+            inventoryGrid.innerHTML = '';
+            
+            if (inventoryItems.length === 0) {
+                inventoryGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 20px;">
+                        <p>You don't have any items yet. Visit the Marketplace to buy some!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            inventoryItems.forEach(item => {
+                const itemCard = document.createElement('div');
+                itemCard.className = 'item-card';
+                
+                // Determine icon based on name
+                let icon = 'fa-box';
+                if (item.name.toLowerCase().includes('sword')) icon = 'fa-sword';
+                else if (item.name.toLowerCase().includes('axe')) icon = 'fa-axe';
+                else if (item.name.toLowerCase().includes('shield')) icon = 'fa-shield';
+                else if (item.name.toLowerCase().includes('helmet')) icon = 'fa-helmet';
+                else if (item.name.toLowerCase().includes('potion')) icon = 'fa-flask';
+                else if (item.name.toLowerCase().includes('bow')) icon = 'fa-bow-arrow';
+                else if (item.name.toLowerCase().includes('staff')) icon = 'fa-wand-magic';
+                else if (item.name.toLowerCase().includes('amulet')) icon = 'fa-gem';
+                
+                itemCard.innerHTML = `
+                    <div class="quantity-badge">${item.quantity}</div>
+                    <div class="item-img">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div class="item-details">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-description">${item.description || 'No description'}</div>
+                        <div class="item-price">Value: ${Math.floor((item.price || 100) / 2)} credits</div>
+                        <div class="item-actions">
+                            <button class="btn btn-danger btn-sm sell-btn" data-item="${item.name}">
+                                <i class="fas fa-coins"></i> Sell
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                inventoryGrid.appendChild(itemCard);
+                
+                // Add event listener to sell button
+                itemCard.querySelector('.sell-btn').addEventListener('click', async function() {
+                    const itemName = this.getAttribute('data-item');
+                    await handleSellItem(itemName);
+                });
+            });
+        }
+
+        async function handleSellItem(itemName) {
+            try {
+                const data = await apiRequest('/sell', 'POST', {
+                    Token: currentToken,
+                    ItemName: itemName
+                });
+                
+                showNotification('Item Sold', `You sold ${itemName}!`, false);
+                
+                // Update user credits
+                currentUser.credits = data.credits;
+                userCreditsElement.textContent = currentUser.credits;
+                
+                // Remove item from inventory or reduce quantity
+                for (let i = 0; i < inventoryItems.length; i++) {
+                    if (inventoryItems[i].name === itemName) {
+                        inventoryItems[i].quantity--;
+                        if (inventoryItems[i].quantity <= 0) {
+                            inventoryItems.splice(i, 1);
+                        }
+                        break;
+                    }
+                }
+                
+                // Refresh inventory display
+                renderInventory();
+                renderTradeInventory();
+            } catch (error) {
+                console.error('Sell error:', error);
+            }
+        }
+
+        function openBuyModal(itemId) {
+            const item = customItems[itemId];
+            if (!item) return;
+            
+            buyItemName.textContent = item.name;
+            buyItemPrice.textContent = item.price;
+            buyModal.dataset.itemId = itemId;
+            
+            buyModal.classList.add('show');
+        }
+
+        function closeBuyModal() {
+            buyModal.classList.remove('show');
+        }
+
+        async function confirmBuy() {
+            const itemId = buyModal.dataset.itemId;
+            const item = customItems[itemId];
+            
+            if (!item) {
+                closeBuyModal();
+                return;
+            }
+            
+            // Check if user has enough credits
+            if (currentUser.credits < item.price) {
+                showNotification('Error', 'You don\'t have enough credits for this purchase', true);
+                closeBuyModal();
+                return;
+            }
+            
+            try {
+                // Call the buy endpoint (we'll simulate it for custom items)
+                const result = {
+                    success: true,
+                    message: `You bought ${item.name} for ${item.price} credits.`,
+                    credits: currentUser.credits - item.price
+                };
+                
+                // Update user credits
+                currentUser.credits = result.credits;
+                userCreditsElement.textContent = currentUser.credits;
+                
+                // Add item to inventory or increase quantity
+                let found = false;
+                for (let i = 0; i < inventoryItems.length; i++) {
+                    if (inventoryItems[i].name === item.name) {
+                        inventoryItems[i].quantity++;
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    inventoryItems.push({
+                        name: item.name,
+                        description: item.description,
+                        price: item.price,
+                        quantity: 1
+                    });
+                }
+                
+                // Reduce quantity in marketplace
+                item.quantity--;
+                if (item.quantity <= 0) {
+                    delete customItems[itemId];
+                }
+                
+                closeBuyModal();
+                showNotification('Purchase Complete', `You bought ${item.name}!`, false);
+                
+                // Refresh inventory and marketplace
+                renderInventory();
+                renderMarketplace();
+                renderTradeInventory();
+                
+            } catch (error) {
+                console.error('Buy error:', error);
+                closeBuyModal();
+            }
+        }
+
+        // Functions - Trade
+        function renderTradeInventory() {
+            tradeInventoryGrid.innerHTML = '';
+            
+            if (inventoryItems.length === 0) {
+                tradeInventoryGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 20px;">
+                        <p>You don't have any items to trade. Visit the Marketplace to buy some!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            inventoryItems.forEach(item => {
+                const itemCard = document.createElement('div');
+                itemCard.className = 'item-card';
+                
+                // Check if the item is already selected for trade
+                const isSelected = selectedTradeItems.some(selected => selected.name === item.name);
+                if (isSelected) {
+                    itemCard.style.borderColor = 'var(--primary)';
+                    itemCard.style.borderWidth = '2px';
+                    itemCard.style.borderStyle = 'solid';
+                }
+                
+                // Determine icon based on name
+                let icon = 'fa-box';
+                if (item.name.toLowerCase().includes('sword')) icon = 'fa-sword';
+                else if (item.name.toLowerCase().includes('axe')) icon = 'fa-axe';
+                else if (item.name.toLowerCase().includes('shield')) icon = 'fa-shield';
+                else if (item.name.toLowerCase().includes('helmet')) icon = 'fa-helmet';
+                else if (item.name.toLowerCase().includes('potion')) icon = 'fa-flask';
+                else if (item.name.toLowerCase().includes('bow')) icon = 'fa-bow-arrow';
+                else if (item.name.toLowerCase().includes('staff')) icon = 'fa-wand-magic';
+                else if (item.name.toLowerCase().includes('amulet')) icon = 'fa-gem';
+                
+                itemCard.innerHTML = `
+                    <div class="quantity-badge">${item.quantity}</div>
+                    <div class="item-img">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div class="item-details">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-actions">
+                            <button class="btn ${isSelected ? 'btn-danger' : 'btn-primary'} btn-sm select-trade-btn" data-item="${item.name}">
+                                ${isSelected ? '<i class="fas fa-times"></i> Remove' : '<i class="fas fa-plus"></i> Select'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                tradeInventoryGrid.appendChild(itemCard);
+                
+                // Add event listener to select button
+                itemCard.querySelector('.select-trade-btn').addEventListener('click', function() {
+                    const itemName = this.getAttribute('data-item');
+                    toggleTradeItem(itemName);
+                });
+            });
+        }
+
+        function toggleTradeItem(itemName) {
+            const index = selectedTradeItems.findIndex(item => item.name === itemName);
+            
+            if (index !== -1) {
+                // Remove item from selection
+                selectedTradeItems.splice(index, 1);
+            } else {
+                // Add item to selection
+                const item = inventoryItems.find(item => item.name === itemName);
+                if (item) {
+                    selectedTradeItems.push({
+                        name: item.name,
+                        description: item.description,
+                        quantity: 1 // We trade 1 at a time
+                    });
+                }
+            }
+            
+            // Refresh trade inventory display
+            renderTradeInventory();
+        }
+
+        function openTradeModal() {
+            const targetUsername = tradeUsernameInput.value.trim();
+            
+            if (!targetUsername) {
+                showNotification('Error', 'Please enter a username to trade with', true);
+                return;
+            }
+            
+            if (selectedTradeItems.length === 0) {
+                showNotification('Error', 'Please select at least one item to trade', true);
+                return;
+            }
+            
+            // Populate trade modal
+            tradeOffering.innerHTML = '';
+            selectedTradeItems.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'trade-item';
+                itemElement.innerHTML = `
+                    <div class="trade-item-header">
+                        <div class="trade-item-title">${item.name}</div>
+                        <div class="trade-item-quantity">1x</div>
+                    </div>
+                    <div>${item.description || 'No description'}</div>
+                `;
+                tradeOffering.appendChild(itemElement);
+            });
+            
+            tradePartner.textContent = targetUsername;
+            
+            tradeModal.classList.add('show');
+        }
+
+        function closeTradeModal() {
+            tradeModal.classList.remove('show');
+        }
+
+        async function confirmTrade() {
+            const targetUsername = tradeUsernameInput.value.trim();
+            
+            try {
+                // For each selected item, make a trade API call
+                for (const item of selectedTradeItems) {
+                    await apiRequest('/trade', 'POST', {
+                        Token: currentToken,
+                        TargetUsername: targetUsername,
+                        ItemName: item.name
+                    });
+                    
+                    // Remove item from inventory
+                    for (let i = 0; i < inventoryItems.length; i++) {
+                        if (inventoryItems[i].name === item.name) {
+                            inventoryItems[i].quantity--;
+                            if (inventoryItems[i].quantity <= 0) {
+                                inventoryItems.splice(i, 1);
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                // Add to trade history
+                const historyItem = document.createElement('div');
+                historyItem.style.padding = '10px';
+                historyItem.style.borderBottom = '1px solid var(--light)';
+                historyItem.innerHTML = `
+                    <div style="font-weight: 600;">Trade with ${targetUsername}</div>
+                    <div style="color: var(--dark-light); font-size: 14px;">
+                        Sent ${selectedTradeItems.length} item(s) - 
+                        ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                `;
+                
+                tradeHistoryList.innerHTML = '';
+                tradeHistoryList.appendChild(historyItem);
+                
+                closeTradeModal();
+                showNotification('Trade Complete', `You traded ${selectedTradeItems.length} items to ${targetUsername}!`, false);
+                
+                // Clear selected items
+                selectedTradeItems = [];
+                
+                // Refresh inventory displays
+                renderInventory();
+                renderTradeInventory();
+                
+            } catch (error) {
+                console.error('Trade error:', error);
+                closeTradeModal();
+            }
+        }
+
+        // Functions - Chat
+        function initializeChat() {
+            // Generate some initial chat messages
+            const chatMessagesContainer = document.getElementById('chat-messages');
+            chatMessagesContainer.innerHTML = '';
+            
+            // Add system message
+            addChatMessage({
+                username: 'System',
+                text: 'Welcome to the Fantasy Casino & Marketplace Chat!',
+                isSystem: true,
+                timestamp: new Date()
+            });
+            
+            // Add some sample user messages
+            const users = ['GoldMaster', 'DragonSlayer', 'LuckyCharm', 'FortuneSeeker'];
+            const messages = [
+                'Hey everyone!',
+                'Anyone want to trade rare items?',
+                'Just won 1000 credits at blackjack!',
+                'Looking for a Magic Staff, willing to pay 300 credits',
+                'New to the platform, any tips?',
+                'Does anyone have a Shield for sale?',
+                'The baccarat game is super fun',
+                'Who wants to trade?'
+            ];
+            
+            // Add sample messages
+            for (let i = 0; i < 5; i++) {
+                const randomUser = users[Math.floor(Math.random() * users.length)];
+                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                
+                setTimeout(() => {
+                    addChatMessage({
+                        username: randomUser,
+                        text: randomMessage,
+                        isSystem: false,
+                        timestamp: new Date()
+                    });
+                }, i * 1000);
+            }
+            
+            // Set periodic messages to simulate active chat
+            setInterval(() => {
+                if (Math.random() > 0.5) {
+                    const randomUser = users[Math.floor(Math.random() * users.length)];
+                    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                    
+                    addChatMessage({
+                        username: randomUser,
+                        text: randomMessage,
+                        isSystem: false,
+                        timestamp: new Date()
+                    });
+                }
+            }, 15000); // Every 15 seconds
+            
+            // Update online users count randomly
+            setInterval(() => {
+                const change = Math.random() > 0.5 ? 1 : -1;
+                onlineUsers = Math.max(5, Math.min(25, onlineUsers + change));
+                onlineCountElement.textContent = `${onlineUsers} online`;
+            }, 30000); // Every 30 seconds
+        }
+
+        function addChatMessage(message) {
+            const chatMessagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            
+            const isOwnMessage = message.username === currentUser.username;
+            messageDiv.className = `message ${isOwnMessage ? 'own' : ''}`;
+            
+            const initial = message.username.charAt(0).toUpperCase();
+            const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            if (message.isSystem) {
+                messageDiv.innerHTML = `
+                    <div class="message-content" style="background-color: rgba(0,0,0,0.05); color: #636e72; max-width: 100%;">
+                        <div class="message-text">${message.text}</div>
+                        <div class="message-time">${time}</div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">${initial}</div>
+                    <div class="message-content">
+                        <div class="message-user">${message.username}</div>
+                        <div class="message-text">${message.text}</div>
+                        <div class="message-time">${time}</div>
+                    </div>
+                `;
+            }
+            
+            chatMessagesContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const text = chatInputField.value.trim();
+            
+            if (!text) return;
+            
+            // Add message to chat
+            addChatMessage({
+                username: currentUser.username,
+                text: text,
+                isSystem: false,
+                timestamp: new Date()
+            });
+            
+            // Clear input
+            chatInputField.value = '';
+        }
+
+        // Functions - Blackjack Game
+        function startBlackjackGame() {
+            if (currentUser.credits < blackjackGame.bet) {
+                showNotification('Error', 'Not enough credits to place bet', true);
+                return;
+            }
+            
+            // Deduct bet from credits
+            currentUser.credits -= blackjackGame.bet;
+            userCreditsElement.textContent = currentUser.credits;
+            
+            blackjackGame.isPlaying = true;
+            blackjackGame.playerTurn = true;
+            
+            // Hide bet controls, show game controls
+            blackjackBetControls.style.display = 'none';
+            
+            // Enable game buttons
+            hitButton.disabled = false;
+            standButton.disabled = false;
+            doubleButton.disabled = false;
+            
+            // Reset cards and score
+            dealerCards.innerHTML = '';
+            playerCards.innerHTML = '';
+            blackjackGame.player.cards = [];
+            blackjackGame.dealer.cards = [];
+            blackjackGame.player.score = 0;
+            blackjackGame.dealer.score = 0;
+            
+            // Deal initial cards
+            dealBlackjackCard('player');
+            dealBlackjackCard('dealer');
+            dealBlackjackCard('player');
+            dealBlackjackCard('dealer', true); // Dealer's second card is face down
+            
+            // Update score display
+            updateBlackjackScore();
+            
+            // Show status
+            blackjackStatusElement.textContent = 'Your turn - Hit or Stand?';
+        }
+
+        function dealBlackjackCard(to, faceDown = false) {
+            // Card values and suits
+            const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+            const suits = ['♦', '♥', '♠', '♣'];
+            
+            // Generate random card
+            const value = values[Math.floor(Math.random() * values.length)];
+            const suit = suits[Math.floor(Math.random() * suits.length)];
+            const isRed = (suit === '♦' || suit === '♥');
+            
+            // Calculate card numerical value
+            let numValue = 0;
+            if (value === 'A') {
+                numValue = 11; // Ace is initially 11, can be reduced to 1 if needed
+            } else if (value === 'J' || value === 'Q' || value === 'K') {
+                numValue = 10;
+            } else {
+                numValue = parseInt(value);
+            }
+            
+            // Create card object
+            const card = {
+                value: value,
+                suit: suit,
+                numValue: numValue,
+                faceDown: faceDown
+            };
+            
+            // Add to appropriate hand
+            blackjackGame[to].cards.push(card);
+            
+            // Create and add card element to DOM
+            const cardElement = document.createElement('div');
+            cardElement.className = `card-item ${isRed ? 'red' : ''} ${faceDown ? 'face-down' : ''}`;
+            cardElement.innerHTML = `
+                <div class="card-value">${value}</div>
+                <div class="card-suit">${suit}</div>
+                <div class="card-value-bottom">${value}</div>
+            `;
+            
+            if (to === 'player') {
+                playerCards.appendChild(cardElement);
+            } else {
+                dealerCards.appendChild(cardElement);
+            }
+            
+            return card;
+        }
+
+        function updateBlackjackScore() {
+            // Calculate player score
+            blackjackGame.player.score = calculateBlackjackScore(blackjackGame.player.cards);
+            playerScoreElement.textContent = blackjackGame.player.score;
+            
+            // Calculate dealer visible score (ignore face down cards)
+            const visibleDealerCards = blackjackGame.dealer.cards.filter(card => !card.faceDown);
+            const visibleScore = calculateBlackjackScore(visibleDealerCards);
+            
+            // Only show dealer's visible score during player's turn
+            if (blackjackGame.playerTurn) {
+                dealerScoreElement.textContent = visibleScore;
+            } else {
+                blackjackGame.dealer.score = calculateBlackjackScore(blackjackGame.dealer.cards);
+                dealerScoreElement.textContent = blackjackGame.dealer.score;
+            }
+            
+            // Check for player blackjack (21 with first two cards)
+            if (blackjackGame.player.cards.length === 2 && blackjackGame.player.score === 21) {
+                blackjackPlayerWins(true); // true for blackjack (pays 3:2)
+            }
+            
+            // Check for player bust
+            if (blackjackGame.player.score > 21) {
+                blackjackPlayerLoses();
+            }
+        }
+
+        function calculateBlackjackScore(cards) {
+            let score = 0;
+            let aces = 0;
+            
+            // First pass: add all non-ace cards and count aces
+            for (let card of cards) {
+                if (card.value === 'A') {
+                    aces++;
+                } else {
+                    score += card.numValue;
+                }
+            }
+            
+            // Add aces with optimal values
+            for (let i = 0; i < aces; i++) {
+                if (score + 11 <= 21) {
+                    score += 11;
+                } else {
+                    score += 1;
+                }
+            }
+            
+            return score;
+        }
+
+        function blackjackHit() {
+            if (!blackjackGame.isPlaying || !blackjackGame.playerTurn) return;
+            
+            dealBlackjackCard('player');
+            updateBlackjackScore();
+            
+            // Disable double down after hitting
+            doubleButton.disabled = true;
+        }
+
+        function blackjackStand() {
+            if (!blackjackGame.isPlaying || !blackjackGame.playerTurn) return;
+            
+            blackjackGame.playerTurn = false;
+            
+            // Reveal dealer's face down card
+            blackjackGame.dealer.cards.forEach(card => {
+                card.faceDown = false;
+            });
+            
+            // Update dealer cards in DOM
+            dealerCards.innerHTML = '';
+            blackjackGame.dealer.cards.forEach(card => {
+                const isRed = (card.suit === '♦' || card.suit === '♥');
+                const cardElement = document.createElement('div');
+                cardElement.className = `card-item ${isRed ? 'red' : ''}`;
+                cardElement.innerHTML = `
+                    <div class="card-value">${card.value}</div>
+                    <div class="card-suit">${card.suit}</div>
+                    <div class="card-value-bottom">${card.value}</div>
+                `;
+                dealerCards.appendChild(cardElement);
+            });
+            
+            // Update dealer score
+            updateBlackjackScore();
+            
+            // Dealer draws until 17 or higher
+            dealerPlay();
+        }
+
+        function blackjackDoubleDown() {
+            if (!blackjackGame.isPlaying || !blackjackGame.playerTurn) return;
+            
+            // Check if player has enough credits for doubling down
+            if (currentUser.credits < blackjackGame.bet) {
+                showNotification('Error', 'Not enough credits to double down', true);
+                return;
+            }
+            
+            // Double the bet
+            currentUser.credits -= blackjackGame.bet;
+            userCreditsElement.textContent = currentUser.credits;
+            blackjackGame.bet *= 2;
+            
+            // Deal one more card to player
+            dealBlackjackCard('player');
+            updateBlackjackScore();
+            
+            // If player hasn't busted, move to dealer's turn
+            if (blackjackGame.player.score <= 21) {
+                blackjackStand();
+            }
+        }
+
+        function dealerPlay() {
+            // Update status
+            blackjackStatusElement.textContent = 'Dealer\'s turn';
+            
+            // Disable player controls
+            hitButton.disabled = true;
+            standButton.disabled = true;
+            doubleButton.disabled = true;
+            
+            // Dealer draws until 17 or higher
+            const dealerDrawCard = () => {
+                if (blackjackGame.dealer.score < 17) {
+                    // Add delay for better visualization
+                    setTimeout(() => {
+                        dealBlackjackCard('dealer');
+                        updateBlackjackScore();
+                        
+                        // Check if dealer busted
+                        if (blackjackGame.dealer.score > 21) {
+                            blackjackPlayerWins();
+                        } else if (blackjackGame.dealer.score >= 17) {
+                            determineWinner();
+                        } else {
+                            dealerDrawCard(); // Continue drawing
+                        }
+                    }, 700);
+                } else {
+                    determineWinner();
+                }
+            };
+            
+            dealerDrawCard();
+        }
+
+        function determineWinner() {
+            const playerScore = blackjackGame.player.score;
+            const dealerScore = blackjackGame.dealer.score;
+            
+            if (playerScore > dealerScore) {
+                blackjackPlayerWins();
+            } else if (playerScore < dealerScore) {
+                blackjackPlayerLoses();
+            } else {
+                blackjackDraw();
+            }
+        }
+
+        function blackjackPlayerWins(isBlackjack = false) {
+            // Calculate winnings
+            let winnings = isBlackjack ? Math.floor(blackjackGame.bet * 2.5) : blackjackGame.bet * 2;
+            
+            // Add winnings to credits
+            currentUser.credits += winnings;
+            userCreditsElement.textContent = currentUser.credits;
+            
+            // Update status
+            blackjackStatusElement.textContent = isBlackjack ? 
+                `Blackjack! You won ${winnings} credits!` : 
+                `You won ${winnings} credits!`;
+            
+            // Enable new hand button
+            newHandButton.disabled = false;
+            
+            // End game
+            blackjackGame.isPlaying = false;
+        }
+
+        function blackjackPlayerLoses() {
+            // Update status
+            blackjackStatusElement.textContent = `You lost ${blackjackGame.bet} credits.`;
+            
+            // Enable new hand button
+            newHandButton.disabled = false;
+            
+            // End game
+            blackjackGame.isPlaying = false;
+        }
+
+        function blackjackDraw() {
+            // Return bet
+            currentUser.credits += blackjackGame.bet;
+            userCreditsElement.textContent = currentUser.credits;
+            
+            // Update status
+            blackjackStatusElement.textContent = 'Push! It\'s a draw.';
+            
+            // Enable new hand button
+            newHandButton.disabled = false;
+            
+            // End game
+            blackjackGame.isPlaying = false;
+        }
+
+        function resetBlackjackGame() {
+            // Reset game state
+            blackjackGame.isPlaying = false;
+            blackjackGame.playerTurn = false;
+            blackjackGame.player.cards = [];
+            blackjackGame.dealer.cards = [];
+            
+            // Clear cards
+            dealerCards.innerHTML = '';
+            playerCards.innerHTML = '';
+            
+            // Reset scores
+            blackjackGame.player.score = 0;
+            blackjackGame.dealer.score = 0;
+            dealerScoreElement.textContent = '0';
+            playerScoreElement.textContent = '0';
+            
+            // Show bet controls, hide game controls
+            blackjackBetControls.style.display = 'flex';
+            
+            // Disable game buttons
+            hitButton.disabled = true;
+            standButton.disabled = true;
+            doubleButton.disabled = true;
+            newHandButton.disabled = true;
+            
+            // Reset status
+            blackjackStatusElement.textContent = 'Place your bet to start';
+        }
+
+        // Functions - Baccarat Game
+        function startBaccaratGame() {
+            if (!baccaratGame.betOn) {
+                showNotification('Error', 'Please select a bet option: Player, Banker, or Tie', true);
+                return;
+            }
+            
+            if (currentUser.credits < baccaratGame.bet) {
+                showNotification('Error', 'Not enough credits to place bet', true);
+                return;
+            }
+            
+            // Deduct bet from credits
+            currentUser.credits -= baccaratGame.bet;
+            userCreditsElement.textContent = currentUser.credits;
+            
+            baccaratGame.isPlaying = true;
+            
+            // Hide bet controls
+            baccaratBetControls.style.display = 'none';
+            document.getElementById('baccarat-betting').style.display = 'none';
+            
+            // Enable deal button
+            baccaratDealButton.disabled = false;
+            
+            // Reset cards and score
+            baccaratPlayerCards.innerHTML = '';
+            baccaratBankerCards.innerHTML = '';
+            baccaratGame.player.cards = [];
+            baccaratGame.banker.cards = [];
+            baccaratGame.player.score = 0;
+            baccaratGame.banker.score = 0;
+            
+            // Update status
+            baccaratStatusElement.textContent = `Bet placed on ${baccaratGame.betOn.toUpperCase()}. Click Deal to start.`;
+        }
+
+        function dealBaccaratCards() {
+            // Disable deal button
+            baccaratDealButton.disabled = true;
+            
+            // Clear cards
+            baccaratPlayerCards.innerHTML = '';
+            baccaratBankerCards.innerHTML = '';
+            baccaratGame.player.cards = [];
+            baccaratGame.banker.cards = [];
+            
+            // Deal initial cards with delay
+            setTimeout(() => {
+                dealBaccaratCard('player');
+                setTimeout(() => {
+                    dealBaccaratCard('banker');
+                    setTimeout(() => {
+                        dealBaccaratCard('player');
+                        setTimeout(() => {
+                            dealBaccaratCard('banker');
+                            
+                            // Update scores
+                            updateBaccaratScores();
+                            
+                            // Check for natural win
+                            if (baccaratGame.player.score >= 8 || baccaratGame.banker.score >= 8) {
+                                determineBaccaratWinner();
+                            } else {
+                                // Check player draw rules
+                                if (baccaratGame.player.score <= 5) {
+                                    // Player draws a third card
+                                    setTimeout(() => {
+                                        dealBaccaratCard('player');
+                                        updateBaccaratScores();
+                                        
+                                        // Check banker draw rules
+                                        const playerThirdCard = baccaratGame.player.cards[2];
+                                        setTimeout(() => {
+                                            checkBankerDraw(playerThirdCard);
+                                        }, 700);
+                                    }, 700);
+                                } else {
+                                    // Player stands
+                                    // Check banker draw rules
+                                    if (baccaratGame.banker.score <= 5) {
+                                        setTimeout(() => {
+                                            dealBaccaratCard('banker');
+                                            updateBaccaratScores();
+                                            setTimeout(() => {
+                                                determineBaccaratWinner();
+                                            }, 700);
+                                        }, 700);
+                                    } else {
+                                        // Banker stands
+                                        setTimeout(() => {
+                                            determineBaccaratWinner();
+                                        }, 700);
+                                    }
+                                }
+                            }
+                        }, 700);
+                    }, 700);
+                }, 700);
+            }, 700);
+        }
+
+        function checkBankerDraw(playerThirdCard) {
+            const bankerScore = baccaratGame.banker.score;
+            let bankerDraws = false;
+            
+            if (bankerScore <= 2) {
+                // Banker always draws with score of 0-2
+                bankerDraws = true;
+            } else if (bankerScore === 3) {
+                // Banker draws with 3 unless player's third card is 8
+                bankerDraws = playerThirdCard.numValue !== 8;
+            } else if (bankerScore === 4) {
+                // Banker draws with 4 if player's third card is 2-7
+                const thirdValue = playerThirdCard.numValue;
+                bankerDraws = thirdValue >= 2 && thirdValue <= 7;
+            } else if (bankerScore === 5) {
+                // Banker draws with 5 if player's third card is 4-7
+                const thirdValue = playerThirdCard.numValue;
+                bankerDraws = thirdValue >= 4 && thirdValue <= 7;
+            } else if (bankerScore === 6) {
+                // Banker draws with 6 if player's third card is 6-7
+                const thirdValue = playerThirdCard.numValue;
+                bankerDraws = thirdValue === 6 || thirdValue === 7;
+            }
+            
+            if (bankerDraws) {
+                dealBaccaratCard('banker');
+                updateBaccaratScores();
+            }
+            
+            // Determine winner after banker's decision
+            setTimeout(() => {
+                determineBaccaratWinner();
+            }, bankerDraws ? 700 : 0);
+        }
+
+        function dealBaccaratCard(to) {
+            // Card values and suits
+            const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+            const suits = ['♦', '♥', '♠', '♣'];
+            
+            // Generate random card
+            const value = values[Math.floor(Math.random() * values.length)];
+            const suit = suits[Math.floor(Math.random() * suits.length)];
+            const isRed = (suit === '♦' || suit === '♥');
+            
+            // Calculate card numerical value (in baccarat)
+            let numValue = 0;
+            if (value === 'A') {
+                numValue = 1;
+            } else if (['10', 'J', 'Q', 'K'].includes(value)) {
+                numValue = 0;
+            } else {
+                numValue = parseInt(value);
+            }
+            
+            // Create card object
+            const card = {
+                value: value,
+                suit: suit,
+                numValue: numValue
+            };
+            
+            // Add to appropriate hand
+            baccaratGame[to].cards.push(card);
+            
+            // Create and add card element to DOM
+            const cardElement = document.createElement('div');
+            cardElement.className = `card-item ${isRed ? 'red' : ''}`;
+            cardElement.innerHTML = `
+                <div class="card-value">${value}</div>
+                <div class="card-suit">${suit}</div>
+                <div class="card-value-bottom">${value}</div>
+            `;
+            
+            if (to === 'player') {
+                baccaratPlayerCards.appendChild(cardElement);
+            } else {
+                baccaratBankerCards.appendChild(cardElement);
+            }
+            
+            return card;
+        }
+
+        function updateBaccaratScores() {
+            // Calculate player score
+            baccaratGame.player.score = calculateBaccaratScore(baccaratGame.player.cards);
+            baccaratPlayerScoreElement.textContent = baccaratGame.player.score;
+            
+            // Calculate banker score
+            baccaratGame.banker.score = calculateBaccaratScore(baccaratGame.banker.cards);
+            baccaratBankerScoreElement.textContent = baccaratGame.banker.score;
+        }
+
+        function calculateBaccaratScore(cards) {
+            // Sum the values of all cards
+            let total = cards.reduce((sum, card) => sum + card.numValue, 0);
+            
+            // In baccarat, only the last digit of the total counts
+            return total % 10;
+        }
+
+        function determineBaccaratWinner() {
+            const playerScore = baccaratGame.player.score;
+            const bankerScore = baccaratGame.banker.score;
+            
+            let result = '';
+            let win = false;
+            
+            if (playerScore > bankerScore) {
+                result = 'PLAYER';
+            } else if (bankerScore > playerScore) {
+                result = 'BANKER';
+            } else {
+                result = 'TIE';
+            }
+            
+            // Check if player won
+            if (baccaratGame.betOn.toUpperCase() === result) {
+                win = true;
+                let winnings = 0;
+                
+                if (result === 'PLAYER') {
+                    winnings = baccaratGame.bet * 2; // 1:1 payout
+                } else if (result === 'BANKER') {
+                    winnings = Math.floor(baccaratGame.bet * 1.95); // 0.95:1 payout (5% commission)
+                } else { // TIE
+                    winnings = baccaratGame.bet * 9; // 8:1 payout
+                }
+                
+                // Add winnings to credits
+                currentUser.credits += winnings;
+                userCreditsElement.textContent = currentUser.credits;
+                
+                baccaratStatusElement.textContent = `${result} wins! You won ${winnings} credits!`;
+            } else {
+                baccaratStatusElement.textContent = `${result} wins. You lost ${baccaratGame.bet} credits.`;
+            }
+            
+            // Enable new hand button
+            baccaratNewHandButton.disabled = false;
+            
+            // End game
+            baccaratGame.isPlaying = false;
+        }
+
+        function resetBaccaratGame() {
+            // Reset game state
+            baccaratGame.isPlaying = false;
+            baccaratGame.player.cards = [];
+            baccaratGame.banker.cards = [];
+            
+            // Clear cards
+            baccaratPlayerCards.innerHTML = '';
+            baccaratBankerCards.innerHTML = '';
+            
+            // Reset scores
+            baccaratGame.player.score = 0;
+            baccaratGame.banker.score = 0;
+            baccaratPlayerScoreElement.textContent = '0';
+            baccaratBankerScoreElement.textContent = '0';
+            
+            // Show bet controls
+            baccaratBetControls.style.display = 'flex';
+            document.getElementById('baccarat-betting').style.display = 'flex';
+            
+            // Clear bet selection
+            baccaratBettingOptions.forEach(option => option.classList.remove('selected'));
+            baccaratGame.betOn = null;
+            
+            // Disable game buttons
+            baccaratDealButton.disabled = true;
+            baccaratNewHandButton.disabled = true;
+            
+            // Reset status
+            baccaratStatusElement.textContent = 'Place your bet to start';
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show loading spinner on page load
+            console.log('Application initializing...');
+            
+            // For demo purposes, we'll add some sample items to the marketplace
+            customItems = {
+                'item_1': {
+                    id: 'item_1',
+                    name: 'Legendary Dragon Sword',
+                    description: 'A powerful sword forged from dragon fire. Adds +50 attack damage.',
+                    price: 500,
+                    quantity: 1,
+                    seller: 'GameMaster',
+                    timestamp: Date.now() - 3600000
+                },
+                'item_2': {
+                    id: 'item_2',
+                    name: 'Magic Shield',
+                    description: 'Ancient shield with magical properties. Blocks 30% of incoming damage.',
+                    price: 350,
+                    quantity: 2,
+                    seller: 'ArmorDealer',
+                    timestamp: Date.now() - 7200000
+                },
+                'item_3': {
+                    id: 'item_3',
+                    name: 'Health Potion',
+                    description: 'Restores 100 health points instantly. Useful in tough battles!',
+                    price: 75,
+                    quantity: 10,
+                    seller: 'AlchemyShop',
+                    timestamp: Date.now() - 1800000
+                },
+                'item_4': {
+                    id: 'item_4',
+                    name: 'Enchanted Amulet',
+                    description: 'Mysterious amulet that brings luck to its owner. +15% critical chance.',
+                    price: 250,
+                    quantity: 1,
+                    seller: 'MysticMage',
+                    timestamp: Date.now() - 10800000
+                }
+            };
+            
+            // Initialize the clock ticker in the auth screen
+            const ticker = document.querySelector('.ticker');
+            setInterval(() => {
+                // Create the sliding animation effect
+                ticker.style.transform = 'translateX(-100%)';
+                setTimeout(() => {
+                    ticker.style.transition = 'none';
+                    ticker.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        ticker.style.transition = 'transform 30s linear';
+                        ticker.style.transform = 'translateX(0)';
+                    }, 100);
+                }, 30000);
+            }, 30100);
+        });
+    </script>
+</body>
+</html>
