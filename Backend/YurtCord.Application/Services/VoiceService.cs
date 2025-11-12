@@ -16,18 +16,12 @@ public interface IVoiceService
     Task<bool> ValidateVoiceTokenAsync(string token);
 }
 
-public class VoiceService : IVoiceService
+public class VoiceService(YurtCordDbContext context, IPermissionService permissionService) : IVoiceService
 {
-    private readonly YurtCordDbContext _context;
-    private readonly IPermissionService _permissionService;
+    private readonly YurtCordDbContext _context = context;
+    private readonly IPermissionService _permissionService = permissionService;
     private static readonly Dictionary<Snowflake, VoiceConnection> _activeConnections = new();
     private static readonly object _lock = new();
-
-    public VoiceService(YurtCordDbContext context, IPermissionService permissionService)
-    {
-        _context = context;
-        _permissionService = permissionService;
-    }
 
     public async Task<VoiceConnection?> JoinVoiceChannelAsync(Snowflake userId, Snowflake channelId)
     {

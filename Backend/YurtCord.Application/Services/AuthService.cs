@@ -19,18 +19,11 @@ public interface IAuthService
     Task<User?> GetUserFromTokenAsync(string token);
 }
 
-public class AuthService : IAuthService
+public class AuthService(YurtCordDbContext context, IConfiguration configuration, SnowflakeGenerator snowflakeGenerator) : IAuthService
 {
-    private readonly YurtCordDbContext _context;
-    private readonly IConfiguration _configuration;
-    private readonly SnowflakeGenerator _snowflakeGenerator;
-
-    public AuthService(YurtCordDbContext context, IConfiguration configuration, SnowflakeGenerator snowflakeGenerator)
-    {
-        _context = context;
-        _configuration = configuration;
-        _snowflakeGenerator = snowflakeGenerator;
-    }
+    private readonly YurtCordDbContext _context = context;
+    private readonly IConfiguration _configuration = configuration;
+    private readonly SnowflakeGenerator _snowflakeGenerator = snowflakeGenerator;
 
     public async Task<AuthResult> RegisterAsync(RegisterRequest request)
     {

@@ -8,16 +8,10 @@ namespace YurtCord.API.Controllers;
 [ApiController]
 [Route("api/guilds")]
 [Authorize]
-public class GuildsController : ControllerBase
+public class GuildsController(IGuildService guildService, IAuthService authService) : ControllerBase
 {
-    private readonly IGuildService _guildService;
-    private readonly IAuthService _authService;
-
-    public GuildsController(IGuildService guildService, IAuthService authService)
-    {
-        _guildService = guildService;
-        _authService = authService;
-    }
+    private readonly IGuildService _guildService = guildService;
+    private readonly IAuthService _authService = authService;
 
     private async Task<Snowflake?> GetCurrentUserIdAsync()
     {

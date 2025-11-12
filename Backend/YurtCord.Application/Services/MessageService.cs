@@ -16,18 +16,11 @@ public interface IMessageService
     Task<bool> RemoveReactionAsync(Snowflake messageId, Snowflake userId, string emoji);
 }
 
-public class MessageService : IMessageService
+public class MessageService(YurtCordDbContext context, IPermissionService permissionService, SnowflakeGenerator snowflakeGenerator) : IMessageService
 {
-    private readonly YurtCordDbContext _context;
-    private readonly IPermissionService _permissionService;
-    private readonly SnowflakeGenerator _snowflakeGenerator;
-
-    public MessageService(YurtCordDbContext context, IPermissionService permissionService, SnowflakeGenerator snowflakeGenerator)
-    {
-        _context = context;
-        _permissionService = permissionService;
-        _snowflakeGenerator = snowflakeGenerator;
-    }
+    private readonly YurtCordDbContext _context = context;
+    private readonly IPermissionService _permissionService = permissionService;
+    private readonly SnowflakeGenerator _snowflakeGenerator = snowflakeGenerator;
 
     public async Task<Message?> CreateMessageAsync(CreateMessageRequest request, Snowflake authorId)
     {

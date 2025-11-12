@@ -8,22 +8,15 @@ using YurtCord.Core.Entities;
 namespace YurtCord.API.Hubs;
 
 [Authorize]
-public class GatewayHub : Hub
+public class GatewayHub(IAuthService authService, IMessageService messageService, IVoiceService voiceService) : Hub
 {
     private static readonly ConcurrentDictionary<string, Snowflake> _connections = new();
     private static readonly ConcurrentDictionary<Snowflake, HashSet<string>> _userConnections = new();
     private static readonly ConcurrentDictionary<string, VoiceChannelState> _voiceChannels = new();
 
-    private readonly IAuthService _authService;
-    private readonly IMessageService _messageService;
-    private readonly IVoiceService _voiceService;
-
-    public GatewayHub(IAuthService authService, IMessageService messageService, IVoiceService voiceService)
-    {
-        _authService = authService;
-        _messageService = messageService;
-        _voiceService = voiceService;
-    }
+    private readonly IAuthService _authService = authService;
+    private readonly IMessageService _messageService = messageService;
+    private readonly IVoiceService _voiceService = voiceService;
 
     public override async Task OnConnectedAsync()
     {

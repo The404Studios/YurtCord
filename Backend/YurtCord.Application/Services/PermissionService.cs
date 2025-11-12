@@ -13,14 +13,9 @@ public interface IPermissionService
     Task<bool> HasChannelPermissionAsync(Snowflake userId, Snowflake channelId, Permissions permission);
 }
 
-public class PermissionService : IPermissionService
+public class PermissionService(YurtCordDbContext context) : IPermissionService
 {
-    private readonly YurtCordDbContext _context;
-
-    public PermissionService(YurtCordDbContext context)
-    {
-        _context = context;
-    }
+    private readonly YurtCordDbContext _context = context;
 
     public async Task<Permissions> CalculateBasePermissionsAsync(Snowflake userId, Snowflake guildId)
     {

@@ -18,18 +18,11 @@ public interface IGuildService
     Task<Role?> CreateRoleAsync(Snowflake guildId, CreateRoleRequest request, Snowflake userId);
 }
 
-public class GuildService : IGuildService
+public class GuildService(YurtCordDbContext context, IPermissionService permissionService, SnowflakeGenerator snowflakeGenerator) : IGuildService
 {
-    private readonly YurtCordDbContext _context;
-    private readonly IPermissionService _permissionService;
-    private readonly SnowflakeGenerator _snowflakeGenerator;
-
-    public GuildService(YurtCordDbContext context, IPermissionService permissionService, SnowflakeGenerator snowflakeGenerator)
-    {
-        _context = context;
-        _permissionService = permissionService;
-        _snowflakeGenerator = snowflakeGenerator;
-    }
+    private readonly YurtCordDbContext _context = context;
+    private readonly IPermissionService _permissionService = permissionService;
+    private readonly SnowflakeGenerator _snowflakeGenerator = snowflakeGenerator;
 
     public async Task<Guild?> CreateGuildAsync(CreateGuildRequest request, Snowflake ownerId)
     {

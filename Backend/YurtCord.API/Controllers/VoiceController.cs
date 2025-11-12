@@ -8,16 +8,10 @@ namespace YurtCord.API.Controllers;
 [ApiController]
 [Route("api/voice")]
 [Authorize]
-public class VoiceController : ControllerBase
+public class VoiceController(IVoiceService voiceService, IAuthService authService) : ControllerBase
 {
-    private readonly IVoiceService _voiceService;
-    private readonly IAuthService _authService;
-
-    public VoiceController(IVoiceService voiceService, IAuthService authService)
-    {
-        _voiceService = voiceService;
-        _authService = authService;
-    }
+    private readonly IVoiceService _voiceService = voiceService;
+    private readonly IAuthService _authService = authService;
 
     private async Task<Snowflake?> GetCurrentUserIdAsync()
     {
@@ -32,7 +26,7 @@ public class VoiceController : ControllerBase
     [HttpGet("regions")]
     public IActionResult GetVoiceRegions()
     {
-        var regions = new[]
+        var regions = new object[]
         {
             new
             {
