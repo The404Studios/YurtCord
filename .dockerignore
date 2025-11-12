@@ -1,0 +1,17 @@
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/.env
+**/.env.*
+**/node_modules
+**/npm-debug.log
+**/dist
+**/build
+**/*.md
+**/LICENSE
+**/README.md
+**/.DS_Store
+**/Thumbs.db
