@@ -12,14 +12,17 @@ public class GatewayHub : Hub
 {
     private static readonly ConcurrentDictionary<string, Snowflake> _connections = new();
     private static readonly ConcurrentDictionary<Snowflake, HashSet<string>> _userConnections = new();
+    private static readonly ConcurrentDictionary<string, VoiceChannelState> _voiceChannels = new();
 
     private readonly IAuthService _authService;
     private readonly IMessageService _messageService;
+    private readonly IVoiceService _voiceService;
 
-    public GatewayHub(IAuthService authService, IMessageService messageService)
+    public GatewayHub(IAuthService authService, IMessageService messageService, IVoiceService voiceService)
     {
         _authService = authService;
         _messageService = messageService;
+        _voiceService = voiceService;
     }
 
     public override async Task OnConnectedAsync()
@@ -152,20 +155,50 @@ public class GatewayHub : Hub
         });
     }
 
+    // ============================================
+    // WebRTC Voice Channel Methods
+    // ============================================
+
     public async Task JoinVoiceChannel(string channelId)
     {
         var user = await GetCurrentUserAsync();
         if (user == null)
             return;
 
+        if (!Snowflake.TryParse(channelId, out var channelSnowflake))
+            return;
+
+        // Join the voice service
+        var connection = await _voiceService.JoinVoiceChannelAsync(user.Id, channelSnowflake);
+        if (connection == null)
+            return;
+
+        // Add to SignalR group
         await Groups.AddToGroupAsync(Context.ConnectionId, $"voice_{channelId}");
 
-        await Clients.Group($"voice_{channelId}").SendAsync("VoiceStateUpdate", new
+        // Track in voice channel state
+        var channelState = _voiceChannels.GetOrAdd(channelId, _ => new VoiceChannelState());
+        channelState.AddUser(user.Id.ToString(), Context.ConnectionId);
+
+        // Notify all users in the channel
+        await Clients.Group($"voice_{channelId}").SendAsync("VoiceUserJoined", new
         {
             userId = user.Id.ToString(),
+            username = user.Username,
+            discriminator = user.Discriminator,
+            avatar = user.Avatar,
             channelId,
-            joined = true,
+            sessionId = connection.SessionId,
+            connectionId = Context.ConnectionId,
             timestamp = DateTime.UtcNow
+        });
+
+        // Send current channel users to the new joiner
+        var currentUsers = channelState.GetUsers();
+        await Clients.Caller.SendAsync("VoiceChannelUsers", new
+        {
+            channelId,
+            users = currentUsers
         });
     }
 
@@ -175,13 +208,160 @@ public class GatewayHub : Hub
         if (user == null)
             return;
 
+        if (!Snowflake.TryParse(channelId, out var channelSnowflake))
+            return;
+
+        // Leave the voice service
+        await _voiceService.LeaveVoiceChannelAsync(user.Id, channelSnowflake);
+
+        // Remove from SignalR group
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"voice_{channelId}");
 
+        // Update voice channel state
+        if (_voiceChannels.TryGetValue(channelId, out var channelState))
+        {
+            channelState.RemoveUser(user.Id.ToString());
+        }
+
+        // Notify all users in the channel
+        await Clients.Group($"voice_{channelId}").SendAsync("VoiceUserLeft", new
+        {
+            userId = user.Id.ToString(),
+            channelId,
+            timestamp = DateTime.UtcNow
+        });
+    }
+
+    // ============================================
+    // WebRTC Signaling Methods
+    // ============================================
+
+    /// <summary>
+    /// Send WebRTC offer to establish peer connection
+    /// </summary>
+    public async Task SendWebRTCOffer(string targetUserId, string channelId, object offer)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        // Find target user's connection
+        if (_voiceChannels.TryGetValue(channelId, out var channelState))
+        {
+            var targetConnectionId = channelState.GetUserConnectionId(targetUserId);
+            if (targetConnectionId != null)
+            {
+                await Clients.Client(targetConnectionId).SendAsync("WebRTCOffer", new
+                {
+                    fromUserId = user.Id.ToString(),
+                    fromUsername = user.Username,
+                    channelId,
+                    offer
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Send WebRTC answer to complete peer connection
+    /// </summary>
+    public async Task SendWebRTCAnswer(string targetUserId, string channelId, object answer)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        // Find target user's connection
+        if (_voiceChannels.TryGetValue(channelId, out var channelState))
+        {
+            var targetConnectionId = channelState.GetUserConnectionId(targetUserId);
+            if (targetConnectionId != null)
+            {
+                await Clients.Client(targetConnectionId).SendAsync("WebRTCAnswer", new
+                {
+                    fromUserId = user.Id.ToString(),
+                    channelId,
+                    answer
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Send ICE candidate for WebRTC connection
+    /// </summary>
+    public async Task SendICECandidate(string targetUserId, string channelId, object candidate)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        // Find target user's connection
+        if (_voiceChannels.TryGetValue(channelId, out var channelState))
+        {
+            var targetConnectionId = channelState.GetUserConnectionId(targetUserId);
+            if (targetConnectionId != null)
+            {
+                await Clients.Client(targetConnectionId).SendAsync("ICECandidate", new
+                {
+                    fromUserId = user.Id.ToString(),
+                    channelId,
+                    candidate
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Update voice state (mute, deafen, speaking)
+    /// </summary>
+    public async Task UpdateVoiceState(string channelId, bool? mute, bool? deaf, bool? speaking)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        // Update in database if needed
+        if (mute.HasValue || deaf.HasValue)
+        {
+            await _voiceService.UpdateVoiceStateAsync(user.Id, new VoiceStateUpdate
+            {
+                SelfMute = mute,
+                SelfDeaf = deaf
+            });
+        }
+
+        // Broadcast to channel
         await Clients.Group($"voice_{channelId}").SendAsync("VoiceStateUpdate", new
         {
             userId = user.Id.ToString(),
             channelId,
-            joined = false,
+            mute,
+            deaf,
+            speaking,
+            timestamp = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Enable/disable video
+    /// </summary>
+    public async Task UpdateVideoState(string channelId, bool enabled)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        await _voiceService.UpdateVoiceStateAsync(user.Id, new VoiceStateUpdate
+        {
+            SelfVideo = enabled
+        });
+
+        await Clients.Group($"voice_{channelId}").SendAsync("VideoStateUpdate", new
+        {
+            userId = user.Id.ToString(),
+            channelId,
+            enabled,
             timestamp = DateTime.UtcNow
         });
     }
@@ -204,4 +384,38 @@ public class GatewayHub : Hub
     {
         await hubContext.Clients.All.SendAsync("ChannelUpdate", channelData);
     }
+}
+
+/// <summary>
+/// Tracks users in a voice channel for WebRTC signaling
+/// </summary>
+public class VoiceChannelState
+{
+    private readonly ConcurrentDictionary<string, string> _userConnections = new(); // userId -> connectionId
+
+    public void AddUser(string userId, string connectionId)
+    {
+        _userConnections[userId] = connectionId;
+    }
+
+    public void RemoveUser(string userId)
+    {
+        _userConnections.TryRemove(userId, out _);
+    }
+
+    public string? GetUserConnectionId(string userId)
+    {
+        return _userConnections.TryGetValue(userId, out var connectionId) ? connectionId : null;
+    }
+
+    public List<object> GetUsers()
+    {
+        return _userConnections.Select(kvp => new
+        {
+            userId = kvp.Key,
+            connectionId = kvp.Value
+        } as object).ToList();
+    }
+
+    public int Count => _userConnections.Count;
 }

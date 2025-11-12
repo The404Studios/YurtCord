@@ -76,6 +76,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IGuildService, GuildService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IVoiceService, VoiceService>();
 
 // JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
