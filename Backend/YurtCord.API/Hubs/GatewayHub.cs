@@ -101,7 +101,7 @@ public class GatewayHub(IAuthService authService, IMessageService messageService
 
         if (message != null)
         {
-            await Clients.All.SendAsync("MessageCreate", new
+            await Clients.Group($"channel_{channelId}").SendAsync("MessageCreate", new
             {
                 id = message.Id.ToString(),
                 channelId = message.ChannelId.ToString(),
@@ -117,6 +117,128 @@ public class GatewayHub(IAuthService authService, IMessageService messageService
                 edited_timestamp = message.EditedTimestamp
             });
         }
+    }
+
+    public async Task EditMessage(string channelId, string messageId, string newContent)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        if (!Snowflake.TryParse(messageId, out var messageSnowflake))
+            return;
+
+        var message = await _messageService.EditMessageAsync(
+            messageSnowflake,
+            newContent,
+            user.Id
+        );
+
+        if (message != null)
+        {
+            await Clients.Group($"channel_{channelId}").SendAsync("MessageUpdate", new
+            {
+                id = message.Id.ToString(),
+                channelId = message.ChannelId.ToString(),
+                content = message.Content,
+                editedTimestamp = message.EditedTimestamp,
+                timestamp = message.Timestamp
+            });
+        }
+    }
+
+    public async Task DeleteMessage(string channelId, string messageId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        if (!Snowflake.TryParse(messageId, out var messageSnowflake))
+            return;
+
+        var success = await _messageService.DeleteMessageAsync(messageSnowflake, user.Id);
+
+        if (success)
+        {
+            await Clients.Group($"channel_{channelId}").SendAsync("MessageDelete", new
+            {
+                id = messageId,
+                channelId,
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    public async Task AddReaction(string channelId, string messageId, string emoji)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        if (!Snowflake.TryParse(messageId, out var messageSnowflake))
+            return;
+
+        var success = await _messageService.AddReactionAsync(messageSnowflake, user.Id, emoji);
+
+        if (success)
+        {
+            await Clients.Group($"channel_{channelId}").SendAsync("MessageReactionAdd", new
+            {
+                messageId,
+                channelId,
+                userId = user.Id.ToString(),
+                emoji,
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    public async Task RemoveReaction(string channelId, string messageId, string emoji)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+            return;
+
+        if (!Snowflake.TryParse(messageId, out var messageSnowflake))
+            return;
+
+        var success = await _messageService.RemoveReactionAsync(messageSnowflake, user.Id, emoji);
+
+        if (success)
+        {
+            await Clients.Group($"channel_{channelId}").SendAsync("MessageReactionRemove", new
+            {
+                messageId,
+                channelId,
+                userId = user.Id.ToString(),
+                emoji,
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    // ============================================
+    // Guild and Channel Subscriptions
+    // ============================================
+
+    public async Task SubscribeToGuild(string guildId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"guild_{guildId}");
+    }
+
+    public async Task UnsubscribeFromGuild(string guildId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"guild_{guildId}");
+    }
+
+    public async Task SubscribeToChannel(string channelId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"channel_{channelId}");
+    }
+
+    public async Task UnsubscribeFromChannel(string channelId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"channel_{channelId}");
     }
 
     public async Task TypingStart(string channelId)

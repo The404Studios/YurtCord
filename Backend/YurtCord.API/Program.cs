@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using YurtCord.API.Hubs;
+using YurtCord.API.Middleware;
 using YurtCord.Application.Services;
 using YurtCord.Core.Common;
 using YurtCord.Infrastructure.Data;
@@ -186,6 +187,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseSerilogRequestLogging();
+
+// Custom middleware
+app.UseGlobalExceptionHandler();
+app.UseRequestLogging();
 
 app.UseCors("AllowAll");
 
