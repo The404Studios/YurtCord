@@ -186,7 +186,7 @@ public class MessageService(YurtCordDbContext context, IPermissionService permis
         return true;
     }
 
-    private List<Snowflake> ParseMentions(string content)
+    private static List<Snowflake> ParseMentions(string content)
     {
         var mentions = new List<Snowflake>();
         var matches = System.Text.RegularExpressions.Regex.Matches(content, @"<@!?(\d+)>");
