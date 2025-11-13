@@ -62,7 +62,28 @@ const messagesSlice = createSlice({
       if (!state.messages[channelId]) {
         state.messages[channelId] = [];
       }
-      state.messages[channelId].push(action.payload);
+      // Prevent duplicates
+      const exists = state.messages[channelId].some(m => m.id === action.payload.id);
+      if (!exists) {
+        state.messages[channelId].push(action.payload);
+      }
+    },
+    updateMessage: (state, action: PayloadAction<Message>) => {
+      const channelId = action.payload.channelId;
+      if (state.messages[channelId]) {
+        const index = state.messages[channelId].findIndex(m => m.id === action.payload.id);
+        if (index !== -1) {
+          state.messages[channelId][index] = action.payload;
+        }
+      }
+    },
+    removeMessage: (state, action: PayloadAction<string>) => {
+      // messageId
+      const messageId = action.payload;
+      // Find and remove from all channels
+      Object.keys(state.messages).forEach(channelId => {
+        state.messages[channelId] = state.messages[channelId].filter(m => m.id !== messageId);
+      });
     },
     clearMessages: (state, action: PayloadAction<string>) => {
       delete state.messages[action.payload];
@@ -96,5 +117,5 @@ const messagesSlice = createSlice({
   },
 });
 
-export const { addMessage, clearMessages } = messagesSlice.actions;
+export const { addMessage, updateMessage, removeMessage, clearMessages } = messagesSlice.actions;
 export default messagesSlice.reducer;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, FormEvent } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { sendMessage } from '../../store/slices/messagesSlice';
+import { fetchMessages, sendMessage } from '../../store/slices/messagesSlice';
+import { signalRService } from '../../services/signalr';
 import type { Guild } from '../../types';
 import MessageItem from './MessageItem';
 
@@ -14,16 +15,66 @@ const ChatArea = ({ channelId, guild }: ChatAreaProps) => {
   const messages = useAppSelector((state) => state.messages.messages[channelId] || []);
   const [content, setContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const channel = guild.channels.find(c => c.id === channelId);
+
+  // Fetch messages and join SignalR channel when channelId changes
+  useEffect(() => {
+    dispatch(fetchMessages(channelId));
+
+    // Join SignalR channel if connected
+    if (signalRService.isConnected) {
+      signalRService.joinChannel(channelId).catch(err => {
+        console.error('Failed to join channel via SignalR:', err);
+      });
+    }
+
+    // Leave channel on cleanup
+    return () => {
+      if (signalRService.isConnected) {
+        signalRService.leaveChannel(channelId).catch(err => {
+          console.error('Failed to leave channel via SignalR:', err);
+        });
+      }
+    };
+  }, [channelId, dispatch]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleInputChange = (value: string) => {
+    setContent(value);
+
+    // Send typing indicator
+    if (signalRService.isConnected && value.trim()) {
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Send typing indicator
+      signalRService.sendTypingIndicator(channelId).catch(err => {
+        console.error('Failed to send typing indicator:', err);
+      });
+
+      // Set timeout to stop showing typing after 3 seconds
+      typingTimeoutRef.current = setTimeout(() => {
+        typingTimeoutRef.current = null;
+      }, 3000);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
+
+    // Clear typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
 
     await dispatch(sendMessage({ channelId, content: content.trim() }));
     setContent('');
@@ -84,7 +135,7 @@ const ChatArea = ({ channelId, guild }: ChatAreaProps) => {
             <input
               type="text"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none"
               placeholder={`Message #${channel?.name || 'channel'}`}
             />

@@ -8,7 +8,9 @@ Beautiful Discord-like communication platform built with React, TypeScript, and 
 - 🎭 **Smooth Animations** - Fade-ins, slides, and hover effects
 - 🎨 **Beautiful Gradients** - Modern gradient backgrounds
 - 🔐 **Authentication** - Login and registration with JWT
-- 💬 **Real-time Chat** - Message display and sending
+- ⚡ **Real-time Chat** - Instant messaging with SignalR WebSockets
+- 🔄 **Auto-reconnection** - Automatic reconnection with exponential backoff
+- ⌨️ **Typing Indicators** - See when users are typing
 - 🖼️ **Rich Media** - Image attachments and embeds
 - 😀 **Reactions** - Emoji reactions on messages
 - 👥 **Member List** - Online/offline status indicators
@@ -52,12 +54,16 @@ src/
 ├── components/          # Reusable UI components
 │   ├── channels/       # Channel list components
 │   ├── chat/           # Chat area and messages
-│   ├── common/         # Common components (Spinner, etc)
+│   ├── common/         # Common components (Spinner, ConnectionStatus, etc)
 │   └── servers/        # Server list components
+├── hooks/              # Custom React hooks
+│   └── useSignalR.ts   # SignalR integration hook
 ├── pages/              # Page components
 │   ├── HomePage.tsx    # Main app layout
 │   ├── LoginPage.tsx   # Login form
 │   └── RegisterPage.tsx # Registration form
+├── services/           # API and real-time services
+│   └── signalr.ts      # SignalR service (WebSocket connection)
 ├── store/              # Redux state management
 │   ├── slices/         # Redux slices
 │   │   ├── authSlice.ts       # Authentication state
@@ -82,7 +88,7 @@ src/
 - **React Router** - Navigation
 - **Tailwind CSS** - Styling
 - **Axios** - HTTP client
-- **SignalR** - Real-time messaging (ready)
+- **@microsoft/signalr** - Real-time WebSocket messaging
 - **Framer Motion** - Animations (available)
 - **React Hot Toast** - Notifications
 
@@ -120,6 +126,50 @@ VITE_GATEWAY_URL=http://localhost:5000/gateway
 ```
 
 Update these in `.env` file or environment variables.
+
+## ⚡ Real-Time Messaging (SignalR)
+
+YurtCord uses SignalR for real-time, bidirectional communication between the frontend and backend.
+
+### Features
+
+- **Instant Messaging** - Messages appear in real-time for all users in a channel
+- **Auto-reconnection** - Automatic reconnection with exponential backoff (0s, 2s, 10s, 30s, 60s)
+- **Typing Indicators** - See when other users are typing (sent via SignalR)
+- **Connection Status** - Visual indicator when disconnected/reconnecting
+- **Channel Management** - Automatic join/leave when switching channels
+
+### How It Works
+
+1. **Connection**: SignalR connects when user logs in (JWT authentication)
+2. **Join Channel**: User joins SignalR group when viewing a channel
+3. **Real-time Events**: Backend broadcasts events to all users in the channel
+4. **Redux Integration**: Events automatically update Redux state
+5. **UI Updates**: React components re-render with new data
+
+### Integration Points
+
+- `src/services/signalr.ts` - SignalR service (connection management)
+- `src/hooks/useSignalR.ts` - React hook (connects on auth, listens for events)
+- `src/components/chat/ChatArea.tsx` - Join/leave channels, typing indicators
+- `src/components/common/ConnectionStatus.tsx` - Visual connection status
+
+### Testing Real-Time Features
+
+1. Open YurtCord in two browser windows
+2. Login as different users (alice@example.com, bob@example.com)
+3. Both join the same channel in the same server
+4. Send a message from one window
+5. **Message appears instantly** in both windows 🎉
+
+### Documentation
+
+See [SIGNALR_INTEGRATION.md](SIGNALR_INTEGRATION.md) for complete documentation on:
+- SignalR architecture
+- Event handling
+- Backend integration
+- Troubleshooting
+- Performance considerations
 
 ## 🎨 Customization
 

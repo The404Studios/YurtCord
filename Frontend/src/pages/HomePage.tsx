@@ -1,16 +1,21 @@
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchGuilds } from '../store/slices/guildsSlice';
+import { useSignalR } from '../hooks/useSignalR';
 import ServerList from '../components/servers/ServerList';
 import ChannelList from '../components/channels/ChannelList';
 import ChatArea from '../components/chat/ChatArea';
 import MemberList from '../components/chat/MemberList';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import ConnectionStatus from '../components/common/ConnectionStatus';
 
 const HomePage = () => {
   const dispatch = useAppDispatch();
   const { guilds, currentGuild, loading } = useAppSelector((state) => state.guilds);
   const { currentChannelId } = useAppSelector((state) => state.channels);
+
+  // Initialize SignalR connection
+  useSignalR();
 
   useEffect(() => {
     dispatch(fetchGuilds());
@@ -62,6 +67,9 @@ const HomePage = () => {
       {currentChannelId && currentGuild && (
         <MemberList guild={currentGuild} />
       )}
+
+      {/* Connection Status Indicator */}
+      <ConnectionStatus />
     </div>
   );
 };
