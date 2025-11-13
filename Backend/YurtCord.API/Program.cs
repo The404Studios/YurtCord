@@ -168,6 +168,16 @@ using (var scope = app.Services.CreateScope())
     {
         await db.Database.MigrateAsync();
         Log.Information("Database migrations applied successfully");
+
+        // Seed database if SEED_DATABASE environment variable is set to "true"
+        if (builder.Configuration.GetValue<bool>("SeedDatabase") ||
+            Environment.GetEnvironmentVariable("SEED_DATABASE")?.ToLower() == "true")
+        {
+            var snowflakeGenerator = scope.ServiceProvider.GetRequiredService<SnowflakeGenerator>();
+            var seeder = new DatabaseSeeder(db, snowflakeGenerator);
+            await seeder.SeedAsync();
+            Log.Information("Database seeding completed");
+        }
     }
     catch (Exception ex)
     {
