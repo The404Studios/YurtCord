@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using YurtCord.Core.Common;
 using YurtCord.Core.Entities;
 
@@ -57,7 +58,6 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Bio = "YurtCord Administrator",
                 Flags = UserFlags.Staff | UserFlags.VerifiedBot,
                 PremiumType = PremiumType.NitroClassic,
-                PublicFlags = UserFlags.Staff,
                 CreatedAt = DateTime.UtcNow
             },
             new User
@@ -73,7 +73,6 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Bio = "Hey there! I'm Alice 👋",
                 Flags = UserFlags.None,
                 PremiumType = PremiumType.None,
-                PublicFlags = UserFlags.None,
                 CreatedAt = DateTime.UtcNow
             },
             new User
@@ -87,9 +86,8 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Verified = true,
                 MfaEnabled = false,
                 Bio = "Software developer and gamer",
-                Flags = UserFlags.None,
+                Flags = UserFlags.EarlySupporter,
                 PremiumType = PremiumType.Nitro,
-                PublicFlags = UserFlags.EarlySupporter,
                 CreatedAt = DateTime.UtcNow
             },
             new User
@@ -105,7 +103,6 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Bio = "Music lover 🎵",
                 Flags = UserFlags.None,
                 PremiumType = PremiumType.None,
-                PublicFlags = UserFlags.None,
                 CreatedAt = DateTime.UtcNow
             },
             new User
@@ -119,9 +116,8 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Verified = true,
                 MfaEnabled = false,
                 Bio = "Designer and artist 🎨",
-                Flags = UserFlags.None,
+                Flags = UserFlags.HypeSquadBravery,
                 PremiumType = PremiumType.None,
-                PublicFlags = UserFlags.HypeSquadBravery,
                 CreatedAt = DateTime.UtcNow
             }
         };
@@ -227,7 +223,7 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Position = 0,
                 Permissions = Permissions.ViewChannel | Permissions.SendMessages |
                              Permissions.ReadMessageHistory | Permissions.Connect |
-                             Permissions.Speak | Permissions.UseVoiceActivity,
+                             Permissions.Speak | Permissions.UseVad,
                 Managed = false,
                 Mentionable = false,
                 CreatedAt = DateTime.UtcNow
