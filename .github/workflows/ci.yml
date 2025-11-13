@@ -55,7 +55,7 @@ jobs:
         ConnectionStrings__DefaultConnection: Host=localhost;Database=yurtcord_test;Username=yurtcord;Password=testpassword
 
     - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         files: ./Backend/**/coverage.cobertura.xml
         fail_ci_if_error: false
