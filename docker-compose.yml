@@ -71,6 +71,7 @@ services:
       MinIO__Endpoint: "minio:9000"
       MinIO__AccessKey: "minioadmin"
       MinIO__SecretKey: "minioadmin"
+      SEED_DATABASE: "true"
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,6 +79,22 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    restart: unless-stopped
+
+  # YurtCord Frontend
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: yurtcord-frontend
+    ports:
+      - "3000:80"
+    environment:
+      VITE_API_URL: "http://localhost:5000"
+      VITE_GATEWAY_URL: "http://localhost:5000/gateway"
+      VITE_APP_NAME: "YurtCord"
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:
