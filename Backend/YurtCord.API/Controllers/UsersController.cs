@@ -278,7 +278,7 @@ public class UsersController(YurtCordDbContext context, IAuthService authService
             {
                 id = channel.Id.ToString(),
                 type = channel.Type.ToString(),
-                recipients = new[]
+                recipients = new object[]
                 {
                     new
                     {

@@ -160,11 +160,11 @@ public class VoiceController(IVoiceService voiceService, IAuthService authServic
     /// <summary>
     /// Get ICE servers configuration for WebRTC
     /// </summary>
-    private object GetIceServersConfiguration()
+    private static object GetIceServersConfiguration()
     {
         return new
         {
-            iceServers = new[]
+            iceServers = new object[]
             {
                 // Public STUN servers
                 new

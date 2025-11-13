@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using YurtCord.Infrastructure.Data;
@@ -77,7 +78,7 @@ public class HealthController(YurtCordDbContext context) : ControllerBase
         return Ok(new { status = "ready" });
     }
 
-    private async Task<object> CheckDatabaseHealthAsync()
+    private async Task<dynamic> CheckDatabaseHealthAsync()
     {
         try
         {

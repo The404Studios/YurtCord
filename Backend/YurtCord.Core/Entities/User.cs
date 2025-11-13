@@ -12,9 +12,11 @@ public class User
     public string? Avatar { get; set; }
     public string? Banner { get; set; }
     public string? Bio { get; set; }
+    public int? AccentColor { get; set; }
     public bool Verified { get; set; }
     public bool MfaEnabled { get; set; }
     public UserFlags Flags { get; set; }
+    public UserFlags PublicFlags { get; set; }
     public PremiumType PremiumType { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
