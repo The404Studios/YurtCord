@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { useAppSelector } from '../../store/hooks';
 import type { Guild } from '../../types';
 import { UserStatus } from '../../types';
 
@@ -6,9 +8,33 @@ interface MemberListProps {
 }
 
 const MemberList = ({ guild }: MemberListProps) => {
+  const presences = useAppSelector((state) => state.presence.presences);
+
+  // Merge guild members with real-time presence data
+  const membersWithPresence = useMemo(() => {
+    return guild.members.map(member => {
+      const presence = presences[member.userId];
+      if (presence) {
+        // Override user status with real-time presence
+        return {
+          ...member,
+          user: {
+            ...member.user,
+            status: presence.status,
+          },
+        };
+      }
+      return member;
+    });
+  }, [guild.members, presences]);
+
   // Group members by online status
-  const onlineMembers = guild.members.filter(m => m.user.status === UserStatus.Online);
-  const offlineMembers = guild.members.filter(m => m.user.status === UserStatus.Offline);
+  const onlineMembers = membersWithPresence.filter(m =>
+    m.user.status === UserStatus.Online ||
+    m.user.status === UserStatus.Idle ||
+    m.user.status === UserStatus.DoNotDisturb
+  );
+  const offlineMembers = membersWithPresence.filter(m => m.user.status === UserStatus.Offline);
 
   const getStatusColor = (status: UserStatus) => {
     switch (status) {
@@ -26,7 +52,7 @@ const MemberList = ({ guild }: MemberListProps) => {
   const renderMember = (member: any) => (
     <button
       key={member.userId}
-      className="w-full px-2 py-1.5 rounded flex items-center space-x-3 hover:bg-gray-700/50 transition-colors group"
+      className="w-full px-2 py-1.5 rounded flex items-center space-x-3 hover:bg-gray-700/50 transition-colors group animate-fade-in"
     >
       <div className="relative flex-shrink-0">
         <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
@@ -34,7 +60,7 @@ const MemberList = ({ guild }: MemberListProps) => {
             {member.user.username.charAt(0).toUpperCase()}
           </span>
         </div>
-        <div className={`absolute bottom-0 right-0 w-3 h-3 ${getStatusColor(member.user.status)} border-2 border-gray-800 rounded-full`} />
+        <div className={`absolute bottom-0 right-0 w-3 h-3 ${getStatusColor(member.user.status)} border-2 border-gray-800 rounded-full transition-colors duration-300`} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-300 group-hover:text-white truncate transition-colors">

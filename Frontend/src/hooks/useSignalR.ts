@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { signalRService } from '../services/signalr';
 import { addMessage, updateMessage, removeMessage } from '../store/slices/messagesSlice';
+import { updateUserPresence } from '../store/slices/presenceSlice';
+import { UserStatus } from '../types';
 import toast from 'react-hot-toast';
 
 export const useSignalR = () => {
@@ -40,7 +42,11 @@ export const useSignalR = () => {
 
         signalRService.onUserPresenceChanged(({ userId, status }) => {
           console.log(`👤 User ${userId} status changed to ${status}`);
-          // Could update user status in Redux
+          dispatch(updateUserPresence({
+            userId,
+            status: status as UserStatus,
+            lastSeen: new Date().toISOString(),
+          }));
         });
 
         signalRService.onReactionAdded(({ messageId, emoji, userId }) => {

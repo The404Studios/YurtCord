@@ -3,6 +3,7 @@ import authReducer from './slices/authSlice';
 import guildsReducer from './slices/guildsSlice';
 import channelsReducer from './slices/channelsSlice';
 import messagesReducer from './slices/messagesSlice';
+import presenceReducer from './slices/presenceSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     guilds: guildsReducer,
     channels: channelsReducer,
     messages: messagesReducer,
+    presence: presenceReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
