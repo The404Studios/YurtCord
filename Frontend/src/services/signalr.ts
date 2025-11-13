@@ -111,6 +111,11 @@ export class SignalRService {
     return this.connection?.state ?? null;
   }
 
+  // Get the underlying connection (for advanced usage)
+  get hubConnection(): signalR.HubConnection | null {
+    return this.connection;
+  }
+
   // Remove all listeners (cleanup)
   removeAllListeners(): void {
     this.connection?.off('MessageReceived');

@@ -4,6 +4,13 @@ import { fetchMessages, sendMessage } from '../../store/slices/messagesSlice';
 import { signalRService } from '../../services/signalr';
 import type { Guild } from '../../types';
 import MessageItem from './MessageItem';
+import TypingIndicator from './TypingIndicator';
+
+interface TypingUser {
+  userId: string;
+  username: string;
+  timestamp: number;
+}
 
 interface ChatAreaProps {
   channelId: string;
@@ -13,7 +20,9 @@ interface ChatAreaProps {
 const ChatArea = ({ channelId, guild }: ChatAreaProps) => {
   const dispatch = useAppDispatch();
   const messages = useAppSelector((state) => state.messages.messages[channelId] || []);
+  const currentUser = useAppSelector((state) => state.auth.user);
   const [content, setContent] = useState('');
+  const [typingUsers, setTypingUsers] = useState<Map<string, TypingUser>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -43,6 +52,39 @@ const ChatArea = ({ channelId, guild }: ChatAreaProps) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Listen for typing events
+  useEffect(() => {
+    const handleTyping = (data: { userId: string; channelId: string; username: string }) => {
+      if (data.channelId === channelId) {
+        setTypingUsers((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(data.userId, {
+            userId: data.userId,
+            username: data.username,
+            timestamp: Date.now(),
+          });
+          return newMap;
+        });
+
+        // Remove typing indicator after 3 seconds
+        setTimeout(() => {
+          setTypingUsers((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(data.userId);
+            return newMap;
+          });
+        }, 3000);
+      }
+    };
+
+    signalRService.onUserTyping(handleTyping);
+
+    return () => {
+      // Cleanup listener
+      signalRService.hubConnection?.off('UserTyping', handleTyping);
+    };
+  }, [channelId]);
 
   const handleInputChange = (value: string) => {
     setContent(value);
@@ -119,6 +161,11 @@ const ChatArea = ({ channelId, guild }: ChatAreaProps) => {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Typing Indicator */}
+      {currentUser && (
+        <TypingIndicator typingUsers={typingUsers} currentUserId={currentUser.id} />
+      )}
 
       {/* Message Input */}
       <div className="p-4">
