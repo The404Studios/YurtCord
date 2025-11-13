@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YurtCord Voice Channel Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            color: #ffffff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #6a5acd;
+            font-size: 2.5em;
+            text-shadow: 0 0 20px rgba(106, 90, 205, 0.5);
+        }
+
+        .auth-section, .voice-section {
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(106, 90, 205, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #9370db;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(106, 90, 205, 0.3);
+            border-radius: 8px;
+            background: rgba(15, 15, 26, 0.8);
+            color: #ffffff;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #6a5acd;
+            box-shadow: 0 0 15px rgba(106, 90, 205, 0.3);
+        }
+
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #6a5acd, #9370db);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(106, 90, 205, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #dc143c, #ff6347);
+        }
+
+        button.success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .status.info {
+            background: rgba(52, 152, 219, 0.2);
+            border-left: 4px solid #3498db;
+        }
+
+        .status.success {
+            background: rgba(46, 204, 113, 0.2);
+            border-left: 4px solid #2ecc71;
+        }
+
+        .status.error {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 4px solid #e74c3c;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .users-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .user-card {
+            background: rgba(15, 15, 26, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(106, 90, 205, 0.2);
+            transition: all 0.3s;
+        }
+
+        .user-card:hover {
+            border-color: rgba(106, 90, 205, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .user-card.self {
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.1);
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .user-status {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.muted {
+            background: rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+        }
+
+        .badge.deafened {
+            background: rgba(52, 73, 94, 0.3);
+            color: #95a5a6;
+        }
+
+        .badge.speaking {
+            background: rgba(46, 204, 113, 0.3);
+            color: #2ecc71;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        video, audio {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+            background: #000;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .stats {
+            background: rgba(15, 15, 26, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #3498db;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats-item:last-child {
+            border-bottom: none;
+        }
+
+        .stats-label {
+            color: #9370db;
+            font-weight: 600;
+        }
+
+        .stats-value {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ YurtCord Voice Channel Demo</h1>
+
+        <!-- Authentication Section -->
+        <div class="auth-section" id="authSection">
+            <h2>1. Authentication</h2>
+            <div class="form-group">
+                <label for="apiUrl">API URL:</label>
+                <input type="text" id="apiUrl" value="http://localhost:5000" placeholder="http://localhost:5000">
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" placeholder="user@example.com">
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Your password">
+            </div>
+            <button onclick="login()">Login</button>
+            <div id="authStatus"></div>
+        </div>
+
+        <!-- Voice Channel Section -->
+        <div class="voice-section hidden" id="voiceSection">
+            <h2>2. Voice Channel</h2>
+            <div class="form-group">
+                <label for="channelId">Channel ID:</label>
+                <input type="text" id="channelId" placeholder="Enter channel snowflake ID">
+            </div>
+
+            <div class="controls">
+                <button onclick="joinVoice()" id="joinBtn">🎙️ Join Voice Channel</button>
+                <button onclick="leaveVoice()" id="leaveBtn" disabled class="danger">❌ Leave Channel</button>
+                <button onclick="toggleMute()" id="muteBtn" disabled>🔇 Mute</button>
+                <button onclick="toggleDeafen()" id="deafenBtn" disabled>🔇 Deafen</button>
+                <button onclick="toggleVideo()" id="videoBtn" disabled>📹 Enable Video</button>
+                <button onclick="toggleScreenShare()" id="screenBtn" disabled>🖥️ Share Screen</button>
+            </div>
+
+            <div id="voiceStatus"></div>
+
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stats-item">
+                    <span class="stats-label">Channel:</span>
+                    <span class="stats-value" id="statChannel">Not connected</span>
+                </div>
+                <div class="stats-item">
+                    <span class="stats-label">Connected Users:</span>
+                    <span class="stats-value" id="statUsers">0</span>
+                </div>
+                <div class="stats-item">
+                    <span class="stats-label">Status:</span>
+                    <span class="stats-value" id="statStatus">Idle</span>
+                </div>
+            </div>
+
+            <!-- Local Stream -->
+            <div id="localStreamContainer" class="hidden">
+                <h3>Your Stream</h3>
+                <video id="localVideo" autoplay muted playsinline></video>
+            </div>
+
+            <!-- Users in Channel -->
+            <h3 style="margin-top: 30px;">Users in Channel</h3>
+            <div class="users-list" id="usersList"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@7.0.0/dist/browser/signalr.min.js"></script>
+    <script>
+        let token = null;
+        let voiceClient = null;
+        let currentUserId = null;
+        let isMuted = false;
+        let isDeafened = false;
+        let isVideoEnabled = false;
+        let isSharingScreen = false;
+        const users = new Map();
+
+        async function login() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const statusDiv = document.getElementById('authStatus');
+            statusDiv.innerHTML = '<div class="status info">Logging in...</div>';
+
+            try {
+                const response = await fetch(`${apiUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Login failed');
+                }
+
+                const data = await response.json();
+                token = data.token;
+                currentUserId = data.user.id;
+
+                statusDiv.innerHTML = `<div class="status success">✅ Logged in as ${data.user.username}#${data.user.discriminator}</div>`;
+
+                // Show voice section
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('voiceSection').classList.remove('hidden');
+
+                initializeVoiceClient();
+
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Login failed: ${error.message}</div>`;
+            }
+        }
+
+        function initializeVoiceClient() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const gatewayUrl = `${apiUrl}/gateway`;
+
+            voiceClient = {
+                connection: new signalR.HubConnectionBuilder()
+                    .withUrl(gatewayUrl, {
+                        accessTokenFactory: () => token
+                    })
+                    .withAutomaticReconnect()
+                    .build(),
+                localStream: null,
+                remoteStreams: new Map(),
+                peerConnections: new Map(),
+                currentChannelId: null
+            };
+
+            setupVoiceHandlers();
+            connectToGateway();
+        }
+
+        function setupVoiceHandlers() {
+            const conn = voiceClient.connection;
+
+            conn.on('VoiceUserJoined', (data) => {
+                console.log('User joined:', data);
+                addUser(data);
+                showStatus(`${data.username} joined the channel`, 'success');
+            });
+
+            conn.on('VoiceUserLeft', (data) => {
+                console.log('User left:', data);
+                removeUser(data.userId);
+                showStatus(`User left the channel`, 'info');
+            });
+
+            conn.on('VoiceChannelUsers', (data) => {
+                console.log('Current users:', data);
+                document.getElementById('statUsers').textContent = data.users.length;
+            });
+
+            conn.on('VoiceStateUpdate', (data) => {
+                updateUserState(data);
+            });
+        }
+
+        async function connectToGateway() {
+            try {
+                await voiceClient.connection.start();
+                console.log('Connected to gateway');
+                showStatus('Connected to gateway', 'success');
+            } catch (error) {
+                console.error('Gateway connection failed:', error);
+                showStatus('Gateway connection failed: ' + error.message, 'error');
+            }
+        }
+
+        async function joinVoice() {
+            const channelId = document.getElementById('channelId').value;
+            if (!channelId) {
+                alert('Please enter a channel ID');
+                return;
+            }
+
+            try {
+                // Get local media
+                voiceClient.localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    },
+                    video: false
+                });
+
+                // Show local video
+                const localVideo = document.getElementById('localVideo');
+                localVideo.srcObject = voiceClient.localStream;
+                document.getElementById('localStreamContainer').classList.remove('hidden');
+
+                // Join channel via SignalR
+                await voiceClient.connection.invoke('JoinVoiceChannel', channelId);
+
+                voiceClient.currentChannelId = channelId;
+
+                document.getElementById('joinBtn').disabled = true;
+                document.getElementById('leaveBtn').disabled = false;
+                document.getElementById('muteBtn').disabled = false;
+                document.getElementById('deafenBtn').disabled = false;
+                document.getElementById('videoBtn').disabled = false;
+                document.getElementById('screenBtn').disabled = false;
+
+                document.getElementById('statChannel').textContent = channelId;
+                document.getElementById('statStatus').textContent = 'Connected';
+
+                showStatus('Joined voice channel!', 'success');
+
+            } catch (error) {
+                console.error('Failed to join voice:', error);
+                showStatus('Failed to join: ' + error.message, 'error');
+            }
+        }
+
+        async function leaveVoice() {
+            if (!voiceClient.currentChannelId) return;
+
+            try {
+                await voiceClient.connection.invoke('LeaveVoiceChannel', voiceClient.currentChannelId);
+
+                // Stop local stream
+                if (voiceClient.localStream) {
+                    voiceClient.localStream.getTracks().forEach(track => track.stop());
+                    voiceClient.localStream = null;
+                }
+
+                document.getElementById('localStreamContainer').classList.add('hidden');
+                voiceClient.currentChannelId = null;
+
+                document.getElementById('joinBtn').disabled = false;
+                document.getElementById('leaveBtn').disabled = true;
+                document.getElementById('muteBtn').disabled = true;
+                document.getElementById('deafenBtn').disabled = true;
+                document.getElementById('videoBtn').disabled = true;
+                document.getElementById('screenBtn').disabled = true;
+
+                document.getElementById('statChannel').textContent = 'Not connected';
+                document.getElementById('statStatus').textContent = 'Idle';
+                document.getElementById('statUsers').textContent = '0';
+
+                users.clear();
+                updateUsersList();
+
+                showStatus('Left voice channel', 'info');
+
+            } catch (error) {
+                console.error('Failed to leave voice:', error);
+            }
+        }
+
+        async function toggleMute() {
+            isMuted = !isMuted;
+
+            if (voiceClient.localStream) {
+                voiceClient.localStream.getAudioTracks().forEach(track => {
+                    track.enabled = !isMuted;
+                });
+            }
+
+            await voiceClient.connection.invoke('UpdateVoiceState', voiceClient.currentChannelId, isMuted, null, null);
+
+            document.getElementById('muteBtn').textContent = isMuted ? '🔊 Unmute' : '🔇 Mute';
+            showStatus(isMuted ? 'Muted' : 'Unmuted', 'info');
+        }
+
+        async function toggleDeafen() {
+            isDeafened = !isDeafened;
+
+            if (isDeafened) {
+                isMuted = true;
+                if (voiceClient.localStream) {
+                    voiceClient.localStream.getAudioTracks().forEach(track => {
+                        track.enabled = false;
+                    });
+                }
+            }
+
+            await voiceClient.connection.invoke('UpdateVoiceState', voiceClient.currentChannelId, null, isDeafened, null);
+
+            document.getElementById('deafenBtn').textContent = isDeafened ? '🔊 Undeafen' : '🔇 Deafen';
+            document.getElementById('muteBtn').textContent = isMuted ? '🔊 Unmute' : '🔇 Mute';
+            showStatus(isDeafened ? 'Deafened' : 'Undeafened', 'info');
+        }
+
+        async function toggleVideo() {
+            isVideoEnabled = !isVideoEnabled;
+            // Video implementation would go here
+            showStatus(isVideoEnabled ? 'Video enabled' : 'Video disabled', 'info');
+        }
+
+        async function toggleScreenShare() {
+            isSharingScreen = !isSharingScreen;
+            // Screen share implementation would go here
+            showStatus(isSharingScreen ? 'Screen sharing started' : 'Screen sharing stopped', 'info');
+        }
+
+        function addUser(user) {
+            users.set(user.userId, {
+                ...user,
+                muted: false,
+                deafened: false,
+                speaking: false
+            });
+            updateUsersList();
+        }
+
+        function removeUser(userId) {
+            users.delete(userId);
+            updateUsersList();
+        }
+
+        function updateUserState(state) {
+            const user = users.get(state.userId);
+            if (user) {
+                if (state.mute !== undefined) user.muted = state.mute;
+                if (state.deaf !== undefined) user.deafened = state.deaf;
+                if (state.speaking !== undefined) user.speaking = state.speaking;
+                updateUsersList();
+            }
+        }
+
+        function updateUsersList() {
+            const container = document.getElementById('usersList');
+            container.innerHTML = '';
+
+            users.forEach((user, userId) => {
+                const isCurrentUser = userId === currentUserId;
+                const card = document.createElement('div');
+                card.className = `user-card ${isCurrentUser ? 'self' : ''}`;
+
+                const badges = [];
+                if (user.muted) badges.push('<span class="badge muted">🔇 Muted</span>');
+                if (user.deafened) badges.push('<span class="badge deafened">🔇 Deafened</span>');
+                if (user.speaking) badges.push('<span class="badge speaking">🎙️ Speaking</span>');
+
+                card.innerHTML = `
+                    <div class="user-name">${user.username}#${user.discriminator} ${isCurrentUser ? '(You)' : ''}</div>
+                    <div class="user-status">${badges.join('')}</div>
+                `;
+
+                container.appendChild(card);
+            });
+
+            document.getElementById('statUsers').textContent = users.size;
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('voiceStatus');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
