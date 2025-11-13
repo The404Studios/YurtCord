@@ -14,9 +14,43 @@ A complete, production-ready Discord clone with:
 
 ## 🎯 Quick Start (Easiest Way)
 
-### Option 1: Self-Contained Mode (No Docker!)
+### Automated Startup Scripts (Recommended!)
 
-The **easiest** way to run YurtCord. Everything runs in one command!
+The **absolute easiest** way to run YurtCord. One command does everything!
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\start.ps1
+```
+
+**Windows (Command Prompt):**
+```cmd
+scripts\start.bat
+```
+
+**Linux/macOS:**
+```bash
+./scripts/start.sh
+```
+
+**What the script does:**
+- ✓ Checks for .NET SDK and Node.js
+- ✓ Installs Frontend dependencies automatically
+- ✓ Creates .env file if missing
+- ✓ Starts Backend in embedded mode (SQLite)
+- ✓ Waits for Backend to be ready
+- ✓ Starts Frontend dev server
+- ✓ Opens on http://localhost:5173
+
+**To stop:**
+- **Windows PowerShell:** `.\scripts\stop.ps1`
+- **Windows CMD:** `scripts\stop.bat`
+- **Linux/macOS:** `./scripts/stop.sh`
+- **Or:** Press Ctrl+C in the terminal
+
+### Option 1: Self-Contained Mode (Manual Setup)
+
+If you prefer manual control, you can start services individually:
 
 ```bash
 # 1. Start Backend (auto-uses SQLite if PostgreSQL unavailable)
@@ -39,7 +73,7 @@ The backend will automatically:
 - Use in-memory caching
 - Store uploads in `./Data/uploads`
 
-### Option 2: Docker Compose (Full Stack)
+### Option 2: Docker Compose (Production Setup)
 
 For production-like environment with PostgreSQL, Redis, and MinIO:
 
