@@ -188,13 +188,13 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(g => g.AfkChannelId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.Property(g => g.SystemChannelId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.HasOne(g => g.Owner)
                 .WithMany()
@@ -263,13 +263,13 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(c => c.GuildId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.Property(c => c.ParentId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.HasOne(c => c.Guild)
                 .WithMany(g => g.Channels)
@@ -301,8 +301,8 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(m => m.ReferencedMessageId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.HasOne(m => m.Channel)
                 .WithMany(c => c.Messages)
@@ -356,8 +356,8 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(r => r.EmojiId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
         });
 
         // Role Configuration
@@ -385,13 +385,13 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(e => e.GuildId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.Property(e => e.CreatorId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.HasMany(e => e.RolesWhitelist)
                 .WithMany()
@@ -406,8 +406,8 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(w => w.GuildId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.Property(w => w.ChannelId)
                 .HasConversion(
@@ -416,13 +416,13 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(w => w.CreatorId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.Property(w => w.ApplicationId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
         });
 
         // Audit Log Configuration
@@ -443,8 +443,8 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(a => a.TargetId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
         });
 
         // VoiceState Configuration
@@ -460,8 +460,8 @@ public class YurtCordDbContext : DbContext
 
             entity.Property(v => v.GuildId)
                 .HasConversion(
-                    v => v!.Value,
-                    v => new Snowflake(v));
+                    v => v.HasValue ? v.Value.Value : (long?)null,
+                    v => v.HasValue ? new Snowflake(v.Value) : (Snowflake?)null);
 
             entity.Property(v => v.ChannelId)
                 .HasConversion(
