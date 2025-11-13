@@ -169,7 +169,6 @@ public class AuthService(YurtCordDbContext context, IConfiguration configuration
 
     private async Task<string> GenerateDiscriminatorAsync(string username)
     {
-        var random = new Random();
         var existingDiscriminators = await _context.Users
             .Where(u => u.Username == username)
             .Select(u => u.Discriminator)
@@ -177,7 +176,7 @@ public class AuthService(YurtCordDbContext context, IConfiguration configuration
 
         for (int i = 0; i < 1000; i++)
         {
-            var discriminator = random.Next(0, 10000).ToString("D4");
+            var discriminator = Random.Shared.Next(0, 10000).ToString("D4");
             if (!existingDiscriminators.Contains(discriminator))
                 return discriminator;
         }
