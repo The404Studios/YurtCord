@@ -20,12 +20,12 @@ public class Message
     public bool Pinned { get; set; }
 
     // Navigation properties
-    public ICollection<MessageMention> Mentions { get; set; } = new();
-    public ICollection<MessageRoleMention> MentionRoles { get; set; } = new();
-    public ICollection<Attachment> Attachments { get; set; } = new();
-    public ICollection<Embed> Embeds { get; set; } = new();
-    public ICollection<Reaction> Reactions { get; set; } = new();
-    public ICollection<MessageComponent> Components { get; set; } = new();
+    public ICollection<MessageMention> Mentions { get; set; } = new List<MessageMention>();
+    public ICollection<MessageRoleMention> MentionRoles { get; set; } = new List<MessageRoleMention>();
+    public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
+    public ICollection<Embed> Embeds { get; set; } = new List<Embed>();
+    public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
+    public ICollection<MessageComponent> Components { get; set; } = new List<MessageComponent>();
 }
 
 public enum MessageType
@@ -103,7 +103,7 @@ public class Embed
     public EmbedVideo? Video { get; set; }
     public EmbedProvider? Provider { get; set; }
     public EmbedAuthor? Author { get; set; }
-    public ICollection<EmbedField> Fields { get; set; } = new();
+    public ICollection<EmbedField> Fields { get; set; } = new List<EmbedField>();
 }
 
 public enum EmbedType

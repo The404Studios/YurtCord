@@ -17,7 +17,7 @@ public class Emoji
     public DateTime CreatedAt { get; set; }
 
     // Navigation properties
-    public ICollection<Role> RolesWhitelist { get; set; } = new();
+    public ICollection<Role> RolesWhitelist { get; set; } = new List<Role>();
 
     public string FormatForDiscord()
     {

@@ -24,13 +24,13 @@ public class Guild
     public DateTime CreatedAt { get; set; }
 
     // Navigation properties
-    public ICollection<Channel> Channels { get; set; } = new();
-    public ICollection<Role> Roles { get; set; } = new();
-    public ICollection<GuildMember> Members { get; set; } = new();
-    public ICollection<Emoji> Emojis { get; set; } = new();
-    public ICollection<GuildBan> Bans { get; set; } = new();
-    public ICollection<Invite> Invites { get; set; } = new();
-    public ICollection<Webhook> Webhooks { get; set; } = new();
+    public ICollection<Channel> Channels { get; set; } = new List<Channel>();
+    public ICollection<Role> Roles { get; set; } = new List<Role>();
+    public ICollection<GuildMember> Members { get; set; } = new List<GuildMember>();
+    public ICollection<Emoji> Emojis { get; set; } = new List<Emoji>();
+    public ICollection<GuildBan> Bans { get; set; } = new List<GuildBan>();
+    public ICollection<Invite> Invites { get; set; } = new List<Invite>();
+    public ICollection<Webhook> Webhooks { get; set; } = new List<Webhook>();
 }
 
 public enum VerificationLevel
@@ -98,7 +98,7 @@ public class GuildMember
     public DateTime? CommunicationDisabledUntil { get; set; }
 
     // Navigation properties
-    public ICollection<Role> Roles { get; set; } = new();
+    public ICollection<Role> Roles { get; set; } = new List<Role>();
 
     public bool IsMuted => CommunicationDisabledUntil.HasValue && CommunicationDisabledUntil.Value > DateTime.UtcNow;
 }

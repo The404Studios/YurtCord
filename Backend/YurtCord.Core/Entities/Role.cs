@@ -19,7 +19,7 @@ public class Role
     public DateTime CreatedAt { get; set; }
 
     // Navigation properties
-    public ICollection<GuildMember> Members { get; set; } = new();
+    public ICollection<GuildMember> Members { get; set; } = new List<GuildMember>();
 }
 
 [Flags]

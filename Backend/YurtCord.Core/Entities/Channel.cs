@@ -21,12 +21,12 @@ public class Channel
     public DateTime? LastMessageAt { get; set; }
 
     // Navigation properties
-    public ICollection<Message> Messages { get; set; } = new();
-    public ICollection<PermissionOverwrite> PermissionOverwrites { get; set; } = new();
-    public ICollection<Channel> Children { get; set; } = new();
-    public ICollection<Webhook> Webhooks { get; set; } = new();
-    public ICollection<VoiceState> VoiceStates { get; set; } = new();
-    public ICollection<ChannelPin> Pins { get; set; } = new();
+    public ICollection<Message> Messages { get; set; } = new List<Message>();
+    public ICollection<PermissionOverwrite> PermissionOverwrites { get; set; } = new List<PermissionOverwrite>();
+    public ICollection<Channel> Children { get; set; } = new List<Channel>();
+    public ICollection<Webhook> Webhooks { get; set; } = new List<Webhook>();
+    public ICollection<VoiceState> VoiceStates { get; set; } = new List<VoiceState>();
+    public ICollection<ChannelPin> Pins { get; set; } = new List<ChannelPin>();
 
     public bool IsThread => Type is ChannelType.GuildNewsThread or ChannelType.GuildPublicThread or ChannelType.GuildPrivateThread;
     public bool IsVoice => Type is ChannelType.GuildVoice or ChannelType.GuildStageVoice;
