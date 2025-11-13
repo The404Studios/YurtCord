@@ -24,13 +24,13 @@ YurtCord is a comprehensive, open-source Discord alternative that provides real-
 
 ### ✨ Highlights
 
-- 🚀 **Production-Ready**: Complete with health checks, monitoring, and error handling
+- 🚀 **Self-Contained Mode**: No Docker required! Runs with SQLite in one command
 - 🏗️ **Clean Architecture**: Separation of concerns with 4-layer architecture
 - 🔒 **Secure**: JWT authentication, BCrypt hashing, rate limiting
 - ⚡ **Real-time**: SignalR WebSocket for instant messaging and events
 - 🎤 **Voice/Video**: WebRTC implementation for peer-to-peer communication
 - 📱 **Modern UI**: Discord-like interface built with React and TailwindCSS
-- 🐳 **Docker Ready**: One-command deployment with Docker Compose
+- 🐳 **Docker Ready**: Optional Docker Compose for production deployment
 - 📚 **Well Documented**: Comprehensive guides for developers and users
 
 ---
@@ -96,36 +96,75 @@ YurtCord is a comprehensive, open-source Discord alternative that provides real-
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- .NET 8 SDK (for development)
-- Node.js 18+ (for frontend development)
+- **.NET 8 SDK** - [Download here](https://dotnet.microsoft.com/download)
+- **Node.js 18+** - [Download here](https://nodejs.org/)
+- **Docker** (optional) - Only needed for production deployment
 
-### 30-Second Setup
+### ⚡ 10-Second Setup (Embedded Mode - Recommended!)
+
+**No Docker required!** Everything runs self-contained with SQLite.
 
 ```bash
 # Clone the repository
 git clone https://github.com/The404Studios/YurtCord.git
 cd YurtCord
 
-# Seed database with test data
-./scripts/seed-database.sh
+# Run the startup script for your platform
+# Windows PowerShell:
+.\scripts\start.ps1
 
-# Start everything
-./scripts/start-all.sh
+# Windows CMD:
+scripts\start.bat
+
+# Linux/macOS:
+./scripts/start.sh
 ```
 
-**That's it!** Open http://localhost:3000 and login with:
+**That's it!** The script will:
+- ✓ Check for .NET SDK and Node.js
+- ✓ Install dependencies automatically
+- ✓ Start Backend with SQLite (no database setup needed!)
+- ✓ Start Frontend dev server
+- ✓ Open at http://localhost:5173
+
+**Login with:**
+- **Email**: `alice@example.com`
+- **Password**: `Password123!`
+
+### 🐳 Docker Setup (Production)
+
+For production deployment with PostgreSQL, Redis, and MinIO:
+
+```bash
+# Clone and start
+git clone https://github.com/The404Studios/YurtCord.git
+cd YurtCord
+docker-compose up -d
+```
+
+**Login with:**
 - **Email**: `admin@yurtcord.com`
 - **Password**: `Admin123!`
 
 ### Access Points
+
+**Embedded Mode (Development):**
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| 🌐 Frontend | http://localhost:5173 | Main application (Vite dev server) |
+| 🔌 Backend API | http://localhost:5000 | REST API |
+| 📖 API Docs | http://localhost:5000/swagger | Interactive documentation |
+| 💓 Health Check | http://localhost:5000/health | Service status |
+
+**Docker Mode (Production):**
 
 | Service | URL | Description |
 |---------|-----|-------------|
 | 🌐 Frontend | http://localhost:3000 | Main application |
 | 🔌 Backend API | http://localhost:5000 | REST API |
 | 📖 API Docs | http://localhost:5000/swagger | Interactive documentation |
-| 💓 Health Check | http://localhost:5000/api/health | Service status |
+| 💓 Health Check | http://localhost:5000/health | Service status |
 | 📊 Grafana | http://localhost:3001 | Monitoring dashboards |
 | 🗄️ MinIO | http://localhost:9001 | Object storage admin |
 
@@ -192,7 +231,10 @@ cd YurtCord
 ## 📚 Documentation
 
 ### For Users
-- **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 30 seconds
+- **[Getting Started](GETTING_STARTED.md)** - ⭐ Complete beginner's guide with step-by-step instructions
+- **[Embedded Mode Guide](EMBEDDED_MODE.md)** - Self-contained deployment without Docker
+- **[Startup Scripts](scripts/README.md)** - Quick reference for all startup commands
+- **[Quick Start](QUICKSTART.md)** - Fast setup guide
 - **[Master Setup](MASTER_SETUP.md)** - Production deployment guide
 
 ### For Developers
@@ -200,6 +242,8 @@ cd YurtCord
 - **[API Documentation](API_DOCUMENTATION.md)** - REST API reference (40+ endpoints)
 - **[Architecture](ARCHITECTURE.md)** - System design and patterns
 - **[Voice Channels](VOICE_CHANNELS.md)** - WebRTC implementation guide
+- **[Frontend README](Frontend/README.md)** - React frontend documentation
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to YurtCord
 
 ---
 
