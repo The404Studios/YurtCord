@@ -137,27 +137,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Rate Limiting (using ASP.NET Core 8+ built-in rate limiting)
-builder.Services.AddRateLimiter(options =>
-{
-    options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.User.Identity?.Name ?? httpContext.Request.Headers.Host.ToString(),
-            factory: partition => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = 100,
-                QueueLimit = 0,
-                Window = TimeSpan.FromMinutes(1)
-            }));
-
-    options.OnRejected = async (context, token) =>
-    {
-        context.HttpContext.Response.StatusCode = 429;
-        await context.HttpContext.Response.WriteAsync("Too many requests. Please try again later.", cancellationToken: token);
-    };
-});
-
 var app = builder.Build();
 
 // Apply migrations automatically
@@ -203,8 +182,6 @@ app.UseGlobalExceptionHandler();
 app.UseRequestLogging();
 
 app.UseCors("AllowAll");
-
-app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
