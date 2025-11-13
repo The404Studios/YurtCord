@@ -21,10 +21,10 @@ public class User
 
     // Navigation properties
     public UserPresence? Presence { get; set; }
-    public ICollection<GuildMember> GuildMemberships { get; set; } = new List<GuildMember>();
-    public ICollection<Message> Messages { get; set; } = new List<Message>();
-    public ICollection<Relationship> Relationships { get; set; } = new List<Relationship>();
-    public ICollection<Relationship> RelatedBy { get; set; } = new List<Relationship>();
+    public ICollection<GuildMember> GuildMemberships { get; set; } = new();
+    public ICollection<Message> Messages { get; set; } = new();
+    public ICollection<Relationship> Relationships { get; set; } = new();
+    public ICollection<Relationship> RelatedBy { get; set; } = new();
 
     public string Tag => $"{Username}#{Discriminator}";
 }
@@ -62,7 +62,7 @@ public class UserPresence
     public User User { get; set; } = null!;
     public PresenceStatus Status { get; set; }
     public string? CustomStatus { get; set; }
-    public ICollection<Activity> Activities { get; set; } = new List<Activity>();
+    public ICollection<Activity> Activities { get; set; } = new();
     public DateTime UpdatedAt { get; set; }
 }
 

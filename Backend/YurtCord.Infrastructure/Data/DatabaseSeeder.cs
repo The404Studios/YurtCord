@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using YurtCord.Core.Common;
 using YurtCord.Core.Entities;
+using BCrypt.Net;
 
 namespace YurtCord.Infrastructure.Data;
 
@@ -51,7 +52,7 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Username = "admin",
                 Discriminator = "0001",
                 Email = "admin@yurtcord.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!", 12),
+                PasswordHash = BCrypt.HashPassword("Admin123!", 12),
                 Avatar = null,
                 Verified = true,
                 MfaEnabled = false,
@@ -66,7 +67,7 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Username = "alice",
                 Discriminator = "0001",
                 Email = "alice@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!", 12),
+                PasswordHash = BCrypt.HashPassword("Password123!", 12),
                 Avatar = null,
                 Verified = true,
                 MfaEnabled = false,
@@ -81,7 +82,7 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Username = "bob",
                 Discriminator = "0001",
                 Email = "bob@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!", 12),
+                PasswordHash = BCrypt.HashPassword("Password123!", 12),
                 Avatar = null,
                 Verified = true,
                 MfaEnabled = false,
@@ -96,7 +97,7 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Username = "charlie",
                 Discriminator = "0001",
                 Email = "charlie@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!", 12),
+                PasswordHash = BCrypt.HashPassword("Password123!", 12),
                 Avatar = null,
                 Verified = true,
                 MfaEnabled = false,
@@ -111,7 +112,7 @@ public class DatabaseSeeder(YurtCordDbContext context, SnowflakeGenerator snowfl
                 Username = "diana",
                 Discriminator = "0001",
                 Email = "diana@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!", 12),
+                PasswordHash = BCrypt.HashPassword("Password123!", 12),
                 Avatar = null,
                 Verified = true,
                 MfaEnabled = false,
