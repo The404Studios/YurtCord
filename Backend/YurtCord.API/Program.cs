@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using YurtCord.API.Configuration;
 using YurtCord.API.Hubs;
 using YurtCord.API.Middleware;
+using YurtCord.API.Services;
 using YurtCord.Application.Services;
 using YurtCord.Core.Common;
 using YurtCord.Infrastructure.Data;
@@ -20,6 +22,11 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog();
+
+// Configure Embedded Mode
+var embeddedConfig = new EmbeddedModeConfiguration();
+builder.Configuration.GetSection("EmbeddedMode").Bind(embeddedConfig);
+var embeddedModeService = new EmbeddedModeService(embeddedConfig);
 
 // Add services
 builder.Services.AddControllers();
@@ -65,9 +72,27 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Database
-builder.Services.AddDbContext<YurtCordDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Database - Auto-detect and use embedded mode if PostgreSQL is not available
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var useEmbeddedMode = embeddedModeService.ShouldUseEmbeddedMode(connectionString);
+
+if (useEmbeddedMode)
+{
+    embeddedModeService.EnsureDirectoriesExist();
+    Log.Information("🚀 Starting in EMBEDDED MODE (self-contained)");
+    Log.Information("   Database: SQLite at {Path}", embeddedConfig.DatabasePath);
+    Log.Information("   File Storage: Local at {Path}", embeddedConfig.FileStoragePath);
+    Log.Information("   Cache: In-Memory");
+
+    builder.Services.AddDbContext<YurtCordDbContext>(options =>
+        options.UseSqlite($"Data Source={embeddedConfig.DatabasePath}"));
+}
+else
+{
+    Log.Information("🐘 Starting with EXTERNAL services (PostgreSQL, Redis, MinIO)");
+    builder.Services.AddDbContext<YurtCordDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 // Snowflake Generator (singleton with worker ID 0)
 builder.Services.AddSingleton(_ => new SnowflakeGenerator(workerId: 0));
