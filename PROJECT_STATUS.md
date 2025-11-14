@@ -75,7 +75,10 @@ scripts\start.bat
 - Channel topics and NSFW flags
 
 #### ✅ Messaging
-- Send, edit, delete messages
+- Send, edit, delete messages (full UI)
+- Inline message editing with keyboard shortcuts
+- Delete confirmation modal
+- "(edited)" labels on edited messages
 - Message history with pagination
 - Message pinning
 - @ Mentions
@@ -101,15 +104,17 @@ scripts\start.bat
 - Bitrate configuration
 - Speaking indicators
 
-#### ✅ Infrastructure
+#### ✅ Infrastructure & Developer Tools
 - PostgreSQL database (production)
 - SQLite database (embedded mode)
 - Entity Framework Core with migrations
 - Serilog structured logging
-- Health check endpoints
+- Health check endpoints + verification scripts
 - Swagger API documentation
 - Global error handling
 - Request/response logging
+- Cross-platform startup scripts (PowerShell, Batch, Bash)
+- Automated system health checks (15+ verification points)
 
 ### Frontend (React 18 + TypeScript)
 
@@ -134,24 +139,27 @@ scripts\start.bat
 - Auth slice (login, register, logout)
 - Guilds slice (servers, current server)
 - Channels slice (channels, current channel)
-- Messages slice (messages per channel)
+- Messages slice (messages per channel, edit, delete)
+- Presence slice (real-time user status)
 
 #### ✅ Real-Time Features
-- SignalR integration
+- SignalR WebSocket integration
 - Instant message delivery
-- Visual typing indicators
+- Visual typing indicators with animations
+- Real-time user presence updates
 - Connection status indicator
-- Auto-reconnection handling
+- Auto-reconnection with exponential backoff
 - Channel join/leave management
+- Message edit/delete sync across clients
 
 #### ✅ Components
 - ServerList - Server icons with tooltips
 - ChannelList - Text/voice channels with categories
 - ChatArea - Messages, input, typing indicators
-- MessageItem - Individual messages with reactions
-- MemberList - Online/offline members
-- ConnectionStatus - Visual WebSocket status
-- TypingIndicator - "User is typing..." display
+- MessageItem - Messages with edit/delete, reactions, "(edited)" labels
+- MemberList - Real-time online/offline with smooth status transitions
+- ConnectionStatus - Visual WebSocket status indicator
+- TypingIndicator - Animated "User is typing..." display
 - LoadingSpinner - Loading states
 
 #### ✅ Routing & Navigation
@@ -252,13 +260,15 @@ YurtCord/
 │   ├── SIGNALR_INTEGRATION.md       # SignalR docs
 │   └── README.md                    # Frontend docs
 │
-├── scripts/                         # Startup scripts
+├── scripts/                         # Automation scripts
 │   ├── start.ps1                    # PowerShell startup
 │   ├── stop.ps1                     # PowerShell stop
 │   ├── start.bat                    # Batch startup
 │   ├── stop.bat                     # Batch stop
 │   ├── start.sh                     # Bash startup
 │   ├── stop.sh                      # Bash stop
+│   ├── health-check.ps1             # PowerShell health check
+│   ├── health-check.sh              # Bash health check
 │   └── README.md                    # Scripts documentation
 │
 ├── GETTING_STARTED.md               # ⭐ Beginner's guide
@@ -514,14 +524,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## 📝 Recent Changes
 
-### Latest Commits (November 2025)
+### Latest Features (November 2025)
 
-1. **Visual Typing Indicators** - Show "User is typing..." in chat
-2. **SignalR Integration** - Complete real-time messaging system
-3. **Startup Scripts** - Cross-platform one-command launch
-4. **Frontend README** - Comprehensive frontend documentation
-5. **Embedded Mode** - Self-contained SQLite deployment
-6. **Discord-like UI** - Beautiful React frontend with animations
+1. **Message Edit/Delete UI** - Inline editing, confirmation modals, "(edited)" labels
+2. **Real-Time Presence Indicators** - Live online/offline status with smooth transitions
+3. **Health Check Scripts** - Automated verification of all system components
+4. **Visual Typing Indicators** - Animated "User is typing..." displays
+5. **Complete SignalR Integration** - Instant messaging, presence, typing sync
+6. **Cross-Platform Startup Scripts** - One-command launch (PowerShell, Batch, Bash)
+7. **Comprehensive Documentation** - PROJECT_STATUS.md, SIGNALR_INTEGRATION.md
+8. **Embedded Mode** - Self-contained SQLite deployment with auto-detection
+9. **Discord-like UI** - Beautiful React frontend with smooth animations
 
 ---
 
